@@ -4587,6 +4587,95 @@ const NOTES_V9 = {
   case: [['Plan details first, BI in call order', 'Benefits shows Plan details first. The benefit investigation follows the order of a call, in three short steps: Call, Coverage, Restrictions and outcome. Everything entered shows on the card.'], ['PA form chosen up front', 'Add authorization request asks which PA form to use.'], ['Clean history for new cases', 'New cases no longer borrow another case\'s authorization, prescription history, notes or documents.'], ['Review facility notes', 'Case information opens the facility notes in a side panel and keeps you on the case.']],
   intake: [['Type dates', 'Dates can be typed or picked without the field resetting.'], ['Existing patient', 'A new case for an existing patient copies everything and opens on Review and Submit.'], ['BIN and PCN', 'On uploaded forms, BIN and PCN copy as separate values.']]
 };
+/* ================= V10: Katie review round 9 ================= */
+VERSIONS.unshift(['v10', 'V10', 'Review round 9', 'Intake: Imaging facility replaces Specialty pharmacy, with a list of imaging facilities and the option to add a new one. Internal care team: Patient advocate removed, Clinical specialist is now Sales account manager, and the field reimbursement manager and sales account manager fill in from the patient\'s zip by territory']);
+S.ver = VERSIONS[0][0]; try { const v = localStorage.getItem('hp-ver'); if (v && VERSIONS.some(x => x[0] === v)) S.ver = v; } catch (e) { }
+applyVersion(); applyApp();
+const isV10 = () => vnum() >= 10 && !isHCP();
+
+/* ---------- Territory alignment (placeholder until the real zip-to-territory list arrives) ---------- */
+const TERR10 = [
+  { name: 'Middle Tennessee', from: 370, to: 372, frm: 'Brandon Fields', sam: 'Lauren Price' },
+  { name: 'East and West Tennessee', from: 373, to: 385, frm: 'Keisha Monroe', sam: 'Marcus Reid' },
+  { name: 'Southeast', from: 300, to: 369, frm: 'Tom Alvarez', sam: 'Dana Whitfield' },
+  { name: 'Southeast', from: 386, to: 399, frm: 'Tom Alvarez', sam: 'Dana Whitfield' },
+  { name: 'West', from: 900, to: 961, frm: 'Keisha Monroe', sam: 'Priya Natarajan' },
+  { name: 'Northeast', from: 100, to: 149, frm: 'Brandon Fields', sam: 'Owen Gallagher' }
+];
+const terrOf = (zip) => { const z = String(zip || '').match(/\d{5}/); if (!z) return null; const n = +z[0].slice(0, 3); return TERR10.find(t => n >= t.from && n <= t.to) || { name: '', frm: 'Unassigned', sam: 'Unassigned', none: true }; };
+const zipOf = (c) => (String(c.city || '').match(/\d{5}/) || [''])[0];
+
+/* Case team everywhere in the Hub: coordinator, FRM and SAM; FRM and SAM come from the territory */
+{ const _pd = pd; pd = function (c) { const v = _pd(c); if (!isV10()) return v; const t = terrOf(zipOf(c)) || { frm: 'Unassigned', sam: 'Unassigned' }; return { ...v, frm: t.frm, cs: t.sam, pa: '', terr: t.name }; }; }
+{ const _tl = teamList; teamList = function (c) { const h = _tl(c); if (!isV10()) return h; const t = terrOf(zipOf(c));
+  return h.replace(/<div class="fld pfld">(?:(?!<div class="fld pfld">)[\s\S])*?<span class="lbl">Patient advocate<\/span>[\s\S]*?<\/span><\/div>/, '')
+    .replace(/<span class="lbl">Clinical specialist<\/span>/, '<span class="lbl">Sales account manager</span>')
+    .replace(/<button class="editbtn" data-a="pedit" data-k="(frm|cs)"[^>]*>[\s\S]*?<\/button>/g, `<span class="terrtag" title="Filled in from the patient's zip">${ic('pin', 12)} ${esc(t && t.name ? t.name : 'No territory')}</span>`); }; }
+{ const _mp = msgPeople; msgPeople = function (c) { const out = _mp(c); if (!isV10()) return out; out.forEach(x => { if (x.role === 'Clinical specialist') x.role = 'Sales account manager'; }); return out; }; }
+
+/* ---------- Imaging facilities (placeholder list) ---------- */
+const IMAGING10 = [
+  { name: 'Midtown Imaging Center', phone: '(615) 555-0310', fax: '(615) 555-0311', addr: '2000 Church Street, Nashville, TN 37203' },
+  { name: 'Cumberland Radiology', phone: '(615) 555-0420', fax: '(615) 555-0421', addr: '310 25th Avenue N, Nashville, TN 37203' },
+  { name: 'Brentwood MRI and CT', phone: '(615) 555-0530', fax: '(615) 555-0531', addr: '7106 Crossroads Blvd, Brentwood, TN 37027' },
+  { name: 'Summit Diagnostic Imaging', phone: '(629) 555-0640', fax: '(629) 555-0641', addr: '5655 Frist Blvd, Hermitage, TN 37076' }
+];
+const IMG_NEW = '+ Add new imaging facility';
+const imgOf = (c) => { if (c.imaging === undefined) { const i = Math.abs([...c.id].reduce((a, ch) => a + ch.charCodeAt(0), 0)) % IMAGING10.length; c.imaging = IMAGING10[i].name; } return IMAGING10.find(x => x.name === c.imaging); };
+
+/* Intake: step label, Imaging facility field and the internal care team */
+const IK_ORIG10 = {};
+{ const _r = render; render = function () {
+  const v = isV10(), P = IK_STEPS.find(s => s.id === 'prescriber'), T = IK_STEPS.find(s => s.id === 'team');
+  if (P) { if (!IK_ORIG10.pt) Object.assign(IK_ORIG10, { pt: P.t, pd: P.d }); P.t = v ? 'Prescriber and imaging facility' : IK_ORIG10.pt; P.d = v ? 'The facility, prescriber, their location and the imaging facility.' : IK_ORIG10.pd; }
+  if (T) { if (!IK_ORIG10.td) IK_ORIG10.td = T.d; T.d = v ? 'The coordinator for this case. Reimbursement and sales managers fill in from the zip.' : IK_ORIG10.td; }
+  return _r.apply(this, arguments); }; }
+{ const _ib = ikBody; ikBody = function (id) { let h = _ib(id); if (!isV10() || !S.ik) return h; const d = S.ik.d;
+  if (id === 'prescriber') {
+    const sel = IMAGING10.find(x => x.name === d.imaging);
+    const field = `${ifield(id, 'imaging', 'Imaging facility', { span: 's6', opt: 1, opts: [...IMAGING10.map(x => x.name), IMG_NEW], ph: 'Select an imaging facility' })}${sel ? `<div class="ikf s6"><div class="ikcard">${ic('building', 18)}<span><b>${esc(sel.name)}</b><br><span class="muted">${esc(sel.addr)} · ${esc(sel.phone)}</span></span></div></div>` : ''}`;
+    h = h.replace(/<div class="ikf s6[^"]*"><label for="ik-pharmacy">[\s\S]*?<\/select>(?:<span class="ik(?:err|hint)">[\s\S]*?<\/span>)?<\/div>/, field);
+  }
+  if (id === 'team') {
+    const t = terrOf(d.zip);
+    const card = (label, who) => `<div class="ikf s6"><label>${label}</label><div class="ikauto">${t && !t.none ? `<span class="avatar sm">${esc(who.split(' ').map(x => x[0]).join('').slice(0, 2))}</span><span><b>${esc(who)}</b><br><span class="muted">${esc(t.name)} territory</span></span>` : `<span class="muted">${t ? 'Unassigned. This zip is not in a territory yet.' : 'Fills in once the patient\'s zip is entered.'}</span>`}</div></div>`;
+    h = `<div class="note-banner">${ic('info', 16)}<span>The coordinator can be set now or later. The field reimbursement manager and sales account manager fill in from the patient's zip${d.zip ? ` (<b>${esc(d.zip)}</b>)` : ''}.</span></div>
+      <div class="ikgrid">${ifield(id, 'pac', 'Patient access coordinator', { span: 's6', opts: ROLE_PEOPLE.pac.filter(x => x !== 'Unassigned') })}<div class="ikf s6"></div>${card('Field reimbursement manager', t ? t.frm : '')}${card('Sales account manager', t ? t.sam : '')}</div>`;
+  }
+  return h; }; }
+{ const _rv = ikReview; ikReview = function () { let h = _rv(); if (!isV10() || !S.ik) return h; const d = S.ik.d, t = terrOf(d.zip) || { frm: '', sam: '' };
+  const cell = (l, v) => `<div><span class="lbl">${l}</span><span class="v ${v ? '' : 'none'}">${v ? esc(v) : 'Not provided'}</span></div>`;
+  h = h.replace(/<div><span class="lbl">Specialty pharmacy<\/span>[\s\S]*?<\/span><\/div>/, cell('Imaging facility', d.imaging)).replace('<h3>Prescriber and pharmacy</h3>', '<h3>Prescriber and imaging facility</h3>');
+  return h.replace(/(<h3>Internal care team<\/h3>[\s\S]*?<div class="rvgrid">)[\s\S]*?(<\/div><\/section>)/, (m, a, b) => a + cell('Coordinator', d.pac) + cell('Reimbursement manager', t.frm) + cell('Sales account manager', t.sam) + b); }; }
+/* "Add new imaging facility" opens a small window instead of selecting the option */
+['input', 'change'].forEach(ev => window.addEventListener(ev, (e) => { const t = e.target; if (t.id !== 'ik-imaging' || t.value !== IMG_NEW) return;
+  e.stopImmediatePropagation(); t.value = S.ik.d.imaging || ''; if (ev === 'change' || !S.modal) { S.modal = { type: 'img10' }; render(); } }, true));
+const _xmV10 = extraModal;
+extraModal = function (m, wrap) {
+  if (m.type === 'img10') { const e = m.err || {};
+    return wrap('Add imaging facility', `<div class="polgrid">${inp('imname', 'Facility name', { req: 1, err: e.name, span: 1 })}${inp('imaddr', 'Address', { opt: 1, span: 1, phText: 'Street, city, state, zip' })}${inp('imphone', 'Phone', { req: 1, err: e.phone, phText: '(999) 999-9999' })}${inp('imfax', 'Fax', { opt: 1, phText: '(999) 999-9999' })}</div>
+      <p class="muted" style="margin:10px 0 0;font-size:12.5px">${ic('info', 13)} The facility is added to the imaging facility list for everyone.</p>`,
+      `<button class="btn" data-a="mclose">Cancel</button><button class="btn primary" data-a="img10save">Add facility</button>`); }
+  return _xmV10(m, wrap);
+};
+Object.assign(EXTRA, {
+  img10save() { const name = val('imname'), phone = val('imphone'), err = {}; if (!name) err.name = 'Enter the facility name'; if (!phone) err.phone = 'Enter a phone number';
+    if (name && IMAGING10.some(x => x.name.toLowerCase() === name.toLowerCase())) err.name = 'That facility is already on the list';
+    if (Object.keys(err).length) { S.modal.err = err; return; }
+    IMAGING10.push({ name, phone, fax: val('imfax'), addr: val('imaddr') || 'Address not entered' }); if (S.ik) S.ik.d.imaging = name; S.modal = null;
+    auditLog('Organizations', 'Imaging facility added', name); toast(`${name} added and selected`); }
+});
+/* Saved on the case, copied for an existing patient, and shown in Case information */
+{ const _iks = EXTRA.iksubmit; EXTRA.iksubmit = function (t, e) { const img = S.ik && S.ik.d.imaging; _iks(t, e); if (!S.ik && S.createdId && img !== undefined) byId(S.createdId).imaging = img || ''; }; }
+{ const _st = EXTRA.ikstart; EXTRA.ikstart = function (t, e) { const pick = S.ik && S.ik.choice; _st(t, e); if (isV10() && S.ik && S.ik.copiedFrom) { const src = byId(S.ik.copiedFrom); imgOf(src); S.ik.d.imaging = src.imaging; } }; }
+{ const _ti = tabInfo; tabInfo = function (c) { const h = _ti(c); if (!isV10()) return h; const im = imgOf(c);
+  const blk = `<div class="block" data-sec="Imaging facility"><div class="section-t">${ic('building', 15)}Imaging facility</div><div class="fields">${im ? `${fld('Facility', im.name, false)}${fld('Address', im.addr, false)}${fld('Phone', im.phone)}${fld('Fax', im.fax || 'Not entered')}` : fld('Facility', 'Not provided', false)}</div></div>`;
+  const i = h.indexOf('<div class="block" data-sec="Prescriber">'); if (i < 0) return h; const j = h.indexOf('<div class="block', i + 10); return j < 0 ? h : h.slice(0, j) + blk + h.slice(j); }; }
+
+const NOTES_V10 = {
+  intake: [['Imaging facility', 'Specialty pharmacy is now Imaging facility, with the facility list and an option to add a new one.'], ['Internal care team', 'Patient advocate is removed. The reimbursement and sales account managers fill in from the patient\'s zip.']],
+  case: [['Sales account manager', 'The case team shows the coordinator, field reimbursement manager and sales account manager, filled in by territory.'], ['Imaging facility', 'Case information shows the imaging facility with its address, phone and fax.']]
+};
 /* Runs after every version is registered: a saved version pick only sticks until a newer version ships */
 verSticky(); applyApp();
 /* ================= Navigation model ================= */
@@ -4672,7 +4761,7 @@ function notesPanel() {
   const k0 = PARENT[S.route] && S.route !== 'case' ? PARENT[S.route] : S.route; const key = NOTES_MAP[k0] ? k0 : 'dashboard';
   return `<aside style="position:fixed;right:16px;top:60px;z-index:70;width:min(420px,calc(100vw - 32px));max-height:calc(100vh - 80px);overflow:auto" class="card" aria-label="Client feedback addressed">
   <div class="card-h"><h3>Feedback addressed on this screen</h3><button class="iconbtn" data-a="notes" aria-label="Close">${ic('x', 16)}</button></div>
-  <div>${[...(parseInt(S.ver.slice(1)) >= 9 ? (NOTES_V9[key] || []).map(x => ['V9 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 8 ? (NOTES_V8[key] || []).map(x => ['V8 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 7 ? (NOTES_V7[key] || []).map(x => ['V7 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 6 ? (NOTES_V6[key] || []).map(x => ['V6 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 5 ? (NOTES_V5[key] || []).map(x => ['V5 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 4 ? (NOTES_V4[key] || []).map(x => ['V4 · ' + x[0], x[1]]) : []), ...(S.ver !== 'v1' ? (NOTES_V2[key] || []).map(x => ['V2 · ' + x[0], x[1]]) : []), ...NOTES_MAP[key]].map(([n, fix]) => `<div style="padding:10px 16px;border-bottom:1px solid var(--line-2);display:grid;grid-template-columns:18px 1fr;gap:4px 10px"><span style="color:var(--green)">${ic('check', 16)}</span><b style="font:600 13.5px var(--f-head)">${esc(n)}</b><span></span><span style="font-size:13px;color:var(--ink-2)">${esc(fix)}</span></div>`).join('')}</div>
+  <div>${[...(parseInt(S.ver.slice(1)) >= 10 ? (NOTES_V10[key] || []).map(x => ['V10 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 9 ? (NOTES_V9[key] || []).map(x => ['V9 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 8 ? (NOTES_V8[key] || []).map(x => ['V8 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 7 ? (NOTES_V7[key] || []).map(x => ['V7 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 6 ? (NOTES_V6[key] || []).map(x => ['V6 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 5 ? (NOTES_V5[key] || []).map(x => ['V5 · ' + x[0], x[1]]) : []), ...(parseInt(S.ver.slice(1)) >= 4 ? (NOTES_V4[key] || []).map(x => ['V4 · ' + x[0], x[1]]) : []), ...(S.ver !== 'v1' ? (NOTES_V2[key] || []).map(x => ['V2 · ' + x[0], x[1]]) : []), ...NOTES_MAP[key]].map(([n, fix]) => `<div style="padding:10px 16px;border-bottom:1px solid var(--line-2);display:grid;grid-template-columns:18px 1fr;gap:4px 10px"><span style="color:var(--green)">${ic('check', 16)}</span><b style="font:600 13.5px var(--f-head)">${esc(n)}</b><span></span><span style="font-size:13px;color:var(--ink-2)">${esc(fix)}</span></div>`).join('')}</div>
   <div class="card-f muted">Showing ${VERSIONS.find(x => x[0] === S.ver)[1]} · ${VERSIONS.find(x => x[0] === S.ver)[2]}. Switch versions in the avatar menu.</div></aside>`;
 }
 
