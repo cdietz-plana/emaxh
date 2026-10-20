@@ -5573,6 +5573,54 @@ Object.assign(EXTRA, { flogosample() { saveFLogo(sampleFLogo()); toast('Sample l
 
 /* The app dropdown in the avatar menu: keep clicks on it from closing and re-rendering the menu */
 document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.appsel')) e.stopPropagation(); }, true);
+
+/* ---------- Health assessment, laid out like the Hub's New case intake ---------- */
+const FAG = [['Ordering and payers', ['A', 'B', 'F']], ['Coding and billing', ['C', 'D', 'H']], ['Team and support', ['E', 'G', 'I']], ['Wrap up', ['conf', 'actions']], ['Review', ['review']]];
+const FAX = { conf: ['Confidence and status', 'How sure you are about these answers, and where the account stands.'], actions: ['Actions and follow-ups', 'What you and the office agreed to do next.'], review: ['Review and complete', 'Check the answers and the score before you save.'] };
+const FAORDER = FAG.flatMap(g => g[1]);
+const faLabel = (id) => FAX[id] ? FAX[id][0] : FQ.find(q => q.id === id).short;
+const faGroup = (id) => FAG.find(g => g[1].includes(id));
+const faDone = (D, id) => FQ.some(q => q.id === id) ? !!D.ans[id] : id === 'review' ? false : D.seen.has(id);
+{ const _fa = EXTRA.fassess; EXTRA.fassess = function (t, e) { _fa(t, e); S.fas.step = 'A'; S.fas.seen = new Set(); }; }
+const faCur = () => { const D = S.fas; if (typeof D.step === 'number') D.step = FAORDER[[0, 3, 6, 9][D.step] ?? 0]; if (!D.seen) D.seen = new Set(); return D.step; };
+ROUTES_X['f-assess'] = () => { const D = S.fas, a = accOf(D.acc), id = faCur(), idx = FAORDER.indexOf(id), prev = lastAs(a), s = fscore(D.ans), n = FQ.filter(q => D.ans[q.id]).length, g = faGroup(id), cases90 = fcasesOf(a.name).filter(c => prodOf(c) === 'Flyrcado').length;
+  const done = FAORDER.filter(k => k !== 'review' && faDone(D, k)).length, total = FAORDER.length - 1;
+  const nav = `<nav class="iknav card" aria-label="Assessment steps"><div class="ikprog"><span class="num">${done} of ${total}</span> steps complete<div class="bar"><i style="width:${Math.round(done / total * 100)}%"></i></div></div>${FAG.map(([gl, ids], gi) => { const gc = ids.includes(id) ? 'cur' : ids.every(k => faDone(D, k)) ? 'done' : 'todo';
+    return `<div class="ikg ${gc}"><div class="ikgh"><span class="gi">${gc === 'done' ? ic('check', 12) : gi + 1}</span>${gl}</div>${ids.map(k => `<button class="iks ${k === id ? 'cur' : faDone(D, k) ? 'done' : 'todo'}" data-a="fasgo" data-v="${k}"><span class="sd"></span>${FQ.some(q => q.id === k) ? `<b class="fa-k">${k}</b> ` : ''}${esc(faLabel(k))}</button>`).join('')}</div>`; }).join('')}</nav>`;
+  let body = '', title, desc;
+  const q = FQ.find(z => z.id === id);
+  if (q) { const v = D.ans[id]; title = q.short; desc = q.text;
+    body = `<div class="fa-ans" role="radiogroup" aria-label="Answer">${Object.entries(FANS).map(([k, [l, cr]]) => `<button role="radio" aria-checked="${v === k}" class="${v === k ? 'on ' + k : ''}" data-a="fans" data-k="${id}" data-v="${k}"><b>${l}</b><span>${k === 'yes' ? 'In place' : k === 'inproc' ? 'Started, not finished' : k === 'no' ? 'Not in place' : 'Not sure yet'}</span></button>`).join('')}</div>
+      ${id === 'I' && cases90 ? `<div class="fsugg">${ic('info', 14)}<span><b>From program data:</b> ${cases90} Flyrcado cases from this account came through the Support Center. Suggested answer: Yes.</span><button class="btn sm" data-a="fans" data-k="I" data-v="yes">Use suggested</button></div>` : ''}
+      <div class="fa-meta"><div><span class="lbl">Weight</span><b>${q.w}%${q.bonus ? ' bonus' : ''}</b><span class="muted">of the score</span></div><div><span class="lbl">Last time</span><b>${prev ? FANS[prev.ans[id]][0] : 'Not assessed'}</b><span class="muted">${prev ? fmt(prev.date) : ''}</span></div><div><span class="lbl">If not in place</span><span>${esc(q.act)}</span></div></div>
+      <div class="ikgrid"><div class="ikf s12"><label for="fnote-${id}">Note <span class="optl">Optional</span></label><textarea id="fnote-${id}" class="fnote" rows="3" placeholder="What you saw or heard">${esc(D.notes[id] || '')}</textarea></div></div>`; }
+  else if (id === 'conf') { [title, desc] = FAX.conf;
+    body = `<div class="ikgrid"><div class="ikf s12"><span class="lbl" style="display:block;margin-bottom:6px">Confidence in these answers</span><div class="segradio" role="radiogroup">${['High', 'Medium', 'Low'].map(c => `<label><input type="radio" name="fconf" data-a="fconf" data-v="${c}" ${D.conf === c ? 'checked' : ''}><span>${c}</span></label>`).join('')}</div></div>
+      <div class="ikf s6">${inp('fstatus', 'Account status', { opts: ['Live', 'Onboarding', 'TBD'], ph: false, v: D.status })}</div></div>`; }
+  else if (id === 'actions') { [title, desc] = FAX.actions; const open = FQ.filter(z => D.ans[z.id] && D.ans[z.id] !== 'yes');
+    body = `${inp('factions', 'Actions to improve the health score', { area: 1, h: 100, v: D.actions, opt: 1, phText: 'What you and the office agreed to do next' })}
+      <div class="iksub">Follow-ups for open items</div><p class="muted" style="font-size:12.5px;margin:0 0 8px">Checked items become follow-ups due in 14 days and show on the office review.</p>
+      ${open.map(z => `<label class="ikcheck"><input type="checkbox" class="fmk" data-q="${z.id}" ${D.mk[z.id] ? 'checked' : ''}><span><b>${z.id}. ${esc(z.short)}</b><span class="muted" style="display:block;font-size:12.5px">${esc(z.act)}</span></span></label>`).join('') || '<div class="muted">Every item is in place. Keep the regular check-in.</div>'}`; }
+  else { [title, desc] = FAX.review; const mk = FQ.filter(z => D.mk[z.id] && D.ans[z.id] !== 'yes').length;
+    body = `<div class="fa-rev-score">${scoreBadge(n ? s : null, true)}<div><b class="${s < 4 ? 'tx-bad' : s < 7 ? 'tx-mid' : 'tx-good'}">${n ? fband(s) : 'Not answered'}</b><span class="muted">${prev ? `Was ${fscore(prev.ans).toFixed(1)} on ${fmt(prev.date)}` : 'First assessment'} · confidence ${esc(D.conf)} · ${esc(D.status)}</span></div></div>${segbar(D.ans)}
+      ${FAG.slice(0, 3).map(([gl, ids]) => `<div class="iksub">${gl}</div>${ids.map(k => { const z = FQ.find(x => x.id === k), v = D.ans[k], pv = prev && prev.ans[k]; return `<div class="fa-rrow"><b class="fa-k">${k}</b><span>${esc(z.short)}${D.notes[k] ? `<span class="muted" style="display:block;font-size:12.5px">${esc(D.notes[k])}</span>` : ''}</span>${v ? `<span class="fa-pill ${v}">${FANS[v][0]}</span>` : '<span class="muted">Not answered</span>'}${pv && pv !== v ? `<span class="muted" style="font-size:12px">was ${FANS[pv][0]}</span>` : '<span></span>'}<button class="link-btn" data-a="fasgo" data-v="${k}">Edit</button></div>`; }).join('')}`).join('')}
+      <div class="iksub">Wrap up</div><div class="fa-rrow"><b class="fa-k">${ic('edit', 12)}</b><span>${D.actions ? esc(D.actions) : '<span class="muted">No actions written</span>'}</span><span class="muted">${mk} follow-up${mk === 1 ? '' : 's'}</span><span></span><button class="link-btn" data-a="fasgo" data-v="actions">Edit</button></div>`; }
+  const nx = FAORDER.slice(idx + 1, idx + 3);
+  const deck = `<div class="ikdeck">${nx[0] ? `<div class="ikpeek p1" aria-hidden="true"><span>${esc(faLabel(nx[0]))}</span></div>` : ''}${nx[1] ? `<div class="ikpeek p2" aria-hidden="true"><span>${esc(faLabel(nx[1]))}</span></div>` : ''}<div class="ikpeek back" aria-hidden="true"></div><section class="card ikmain"><div class="ikhead"><span class="eyebrow">${g[0]} · Step ${idx + 1} of ${FAORDER.length}</span><h2>${q ? `<span class="fa-k big">${id}</span> ` : ''}${esc(title)}</h2><p>${esc(desc)}</p></div>
+    <div class="ikbody">${body}</div>
+    <div class="ikfoot">${idx ? `<button class="btn" data-a="fstep" data-v="-1">${ic('chevl', 16)} Back</button>` : `<button class="btn" data-a="facc" data-id="${a.id}">Cancel</button>`}<span class="sp"></span><span class="muted num" style="font-size:13px">Step ${idx + 1} of ${FAORDER.length}</span>${id === 'review' ? `<button class="btn primary" data-a="fasdone">${ic('check', 16)} Complete assessment</button>` : `<button class="btn primary" data-a="fstep" data-v="1">Continue ${ic('arrowr', 16)}</button>`}</div></section></div>`;
+  const sum = `<aside class="iksum card"><div class="card-h"><h3>Assessment summary</h3></div><div class="card-b"><div class="ikids"><div><span class="lbl">Account</span><b>${esc(a.name)}</b></div><div><span class="lbl">Product</span><b>Flyrcado</b></div><div><span class="lbl">Assessed by</span><b>${esc(frmMe().name)}</b></div><div><span class="lbl">Last assessed</span><b class="num">${prev ? fmt(prev.date) : 'Never'}</b></div></div>
+    <div class="fa-live">${scoreBadge(n ? s : null, true)}<div><span class="lbl">Live score</span><b class="${s < 4 ? 'tx-bad' : s < 7 ? 'tx-mid' : 'tx-good'}">${n ? fband(s) : 'Not answered'}</b><span class="muted">${prev ? `Was ${fscore(prev.ans).toFixed(1)}` : ''}${prev ? ' · ' : ''}${n} of ${FQ.length} answered</span></div></div>${segbar(D.ans)}
+    ${FAG.slice(0, 3).map(([gl, ids]) => `<button class="sumrow" data-a="fasgo" data-v="${ids[0]}"><span class="sd ${ids.every(k => D.ans[k]) ? 'done' : 'todo'}"></span><span><span class="lbl">${gl}</span><span class="v">${ids.map(k => `${k} ${D.ans[k] ? FANS[D.ans[k]][0] : '-'}`).join(' · ')}</span></span></button>`).join('')}
+    <button class="sumrow" data-a="fasgo" data-v="conf"><span class="sd ${D.seen.has('conf') ? 'done' : 'todo'}"></span><span><span class="lbl">Confidence and status</span><span class="v">${esc(D.conf)} · ${esc(D.status)}</span></span></button></div></aside>`;
+  return `<div class="page ikpage fassess2"><div class="pagehead"><div><div class="crumbs"><a href="#" data-a="go" data-r="f-accounts">Accounts</a>${ic('chevr', 12)}<a href="#" data-a="facc" data-id="${a.id}">${esc(a.name)}</a>${ic('chevr', 12)}<span>Health assessment</span></div><h1>Flyrcado health assessment <span class="muted" style="font:400 15px var(--f-body)">for ${esc(a.name)}</span></h1></div><span style="flex:1"></span><span class="muted" style="font-size:12.5px;max-width:300px;text-align:right">${prev ? `Answers start from the ${fmt(prev.date)} assessment.` : 'First assessment for this account.'}</span><button class="btn danger" data-a="facc" data-id="${a.id}">Cancel assessment</button></div>
+    <div class="iklayout">${nav}${deck}${sum}</div></div>`; };
+Object.assign(EXTRA, {
+  fasgo(t) { const D = S.fas; D.seen.add(faCur()); D.step = t.dataset.v; window.scrollTo(0, 0); },
+  fstep(t) { const D = S.fas, id = faCur(), i = FAORDER.indexOf(id), dir = +t.dataset.v;
+    if (dir > 0 && FQ.some(q => q.id === id) && !D.ans[id]) { toast(`Answer ${id} to continue`); return; }
+    D.seen.add(id); D.step = FAORDER[Math.max(0, Math.min(FAORDER.length - 1, i + dir))]; window.scrollTo(0, 0); }
+});
 /* Runs after every version is registered: a saved version pick only sticks until a newer version ships */
 verSticky(); applyApp();
 /* ================= Navigation model ================= */
