@@ -5570,6 +5570,9 @@ document.addEventListener('change', (e) => { const t = e.target; if (t.id !== 'f
   if (f.size > 500 * 1024) { toast('That file is over 500 KB. Try a smaller logo.'); return; }
   const r = new FileReader(); r.onload = () => { saveFLogo(String(r.result)); toast('Logo updated'); render(); }; r.readAsDataURL(f); });
 Object.assign(EXTRA, { flogosample() { saveFLogo(sampleFLogo()); toast('Sample logo added'); }, flogorm() { saveFLogo(''); toast('Logo removed'); } });
+
+/* The app dropdown in the avatar menu: keep clicks on it from closing and re-rendering the menu */
+document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.appsel')) e.stopPropagation(); }, true);
 /* Runs after every version is registered: a saved version pick only sticks until a newer version ships */
 verSticky(); applyApp();
 /* ================= Navigation model ================= */
