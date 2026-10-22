@@ -5677,6 +5677,11 @@ function fitNav() { const row = document.querySelector('.topnav .row'), b = docu
   b.classList.toggle('nav-compact', tight); if (!tight && was && S.navOpen) { S.navOpen = false; } }
 { const _r = render; render = function () { const out = _r.apply(this, arguments); fitNav(); return out; }; }
 window.addEventListener('resize', fitNav);
+
+/* ---------- One version number across the Hub, HCP Portal and FRM Workspace ----------
+   Each module's versions carry the number of the Hub release they shipped with. */
+{ const map = { p1: 'V3', p2: 'V6', p3: 'V12' }; HCP_VERSIONS.forEach(v => { if (map[v[0]]) v[1] = map[v[0]]; }); }
+FRM_VERSIONS.forEach(v => { if (v[0] === 'f1') v[1] = 'V12'; });
 /* Runs after every version is registered: a saved version pick only sticks until a newer version ships */
 verSticky(); applyApp();
 /* ================= Navigation model ================= */
