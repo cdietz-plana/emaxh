@@ -5114,7 +5114,7 @@ NOTES_HCP['h-settings'] = [['Branding', 'Pick the portal color and upload the pr
 const FRM_VERSIONS = [['f1', 'V1', 'First build', 'FRM Workspace rebuilt in the HealthPacer style: Today, Accounts, account health tracker, office review, Cases, Follow-ups and Activity. Filter panel on Accounts, Cases and Activity; card or table view for Accounts; previews on Cases and Follow-ups; company logo in Settings, Branding; Data as of, app switcher, light and dark mode'] ];
 try { if (localStorage.getItem('hp-app') === 'frm') S.app = 'frm'; } catch (e) { }
 const isFRM = () => S.app === 'frm';
-const fBuilt = () => ['f-today', 'f-accounts', 'f-account', 'f-assess', 'f-review', 'f-cases', 'f-followups', 'f-activity', 'f-settings'].forEach(r => BUILT.includes(r) || BUILT.push(r));
+const fBuilt = () => ['f-today', 'f-accounts', 'f-account', 'f-assess', 'f-review', 'f-cases', 'f-followups', 'f-activity', 'f-settings', 'f-case'].forEach(r => BUILT.includes(r) || BUILT.push(r));
 if (isFRM() && !String(S.route).startsWith('f-')) S.route = 'f-today';
 Object.assign(S, { fscope: 'mine', ffilt: 'all', fq: '', facc: null, ftab: 'overview', fcstage: 'open', fcalert: 'all', fcprod: 'all', factf: 'all' });
 
@@ -5214,7 +5214,7 @@ function frmAcct() { const me = frmMe(), open = S.menu === 'acct';
     <button data-a="go" data-r="patterns">${ic('grid', 16)} eMax Design Pattern Library</button></div>` : ''}</div>`; }
 function frmShell(content) {
   if (S.route === 'f-review') return `<header class="topnav freview-bar"><div class="row">${logo(true)}<span class="portaltag">Office review</span><span style="flex:1"></span><button class="btn light" data-a="go" data-r="f-account">${ic('chevl', 16)} Exit review</button><button class="btn light" data-a="drawer" data-v="flog" data-id="${S.facc}">${ic('edit', 16)} Log this visit</button><button class="btn" data-a="fprint">${ic('file', 16)} Print or save as PDF</button></div></header>${content}`;
-  const over = FFU.filter(f => !f.done && dayDiff(f.due) < 0).length, on = (k) => S.route === k || (k === 'f-accounts' && ['f-account', 'f-assess'].includes(S.route));
+  const over = FFU.filter(f => !f.done && dayDiff(f.due) < 0).length, on = (k) => S.route === k || (k === 'f-accounts' && ['f-account', 'f-assess'].includes(S.route)) || (k === 'f-cases' && S.route === 'f-case');
   return `<header class="topnav"><div class="row">${logo(true)}<span class="portaltag">FRM Workspace</span><button class="iconbtn mobile-only" data-a="menuopen" aria-label="Open menu">${ic('menu', 20)}</button>
     <nav class="menu ${S.navOpen ? 'open' : ''}" aria-label="Main">${FNAV.map(([k, l]) => `<button data-a="go" data-r="${k}" class="${on(k) ? 'on' : ''}">${l}${k === 'f-followups' && over ? ` <span class="count num">${over}</span>` : ''}</button>`).join('')}</nav>
     <span style="flex:1"></span><button class="btn primary hnewbtn" data-a="drawer" data-v="flog">${ic('plus', 16)} Log activity</button><div class="util">${frmAcct()}</div></div></header>${content}`;
@@ -5358,8 +5358,7 @@ ROUTES_X['f-activity'] = () => { const A = new Set(myAccts().map(a => a.id)), L 
   if (d.type === 'fcase') { const c = byId(d.id), x = fcase(c), j = jIdx(c);
     return shell(`Case ${c.id}`, `<div class="fields">${fld('Patient', `${x.ini} (${x.yob})`, false)}${fld('Product', prodOf(c), false)}${fld('Ordering office', c.facility, false)}${fld('Scan facility', x.scan, false)}${fld('Prescriber', c.prescriber, false)}</div>
       <div class="kv-sub">Where it is</div><ol class="fjourney">${FJOURNEY.map((l, i) => `<li class="${j < 0 ? '' : i < j ? 'done' : i === j ? 'on' : ''}"><span></span>${l}</li>`).join('')}</ol>
-      <div class="fields">${kv('Hub status', `${pill(c.caseStatus)} ${c.sub ? `<span class="muted">${esc(c.sub)}</span>` : ''}`)}${kv('Alert', x.alert ? pill(x.alert) : 'None')}${kv('Days in this status', `${x.days} business days`)}${fld('Coverage', c.coverage, false)}${fld('Assigned case manager', c.owner, false)}</div>
-      <div class="note-banner" style="margin-top:12px">${ic('info', 16)}<span>The FRM Workspace shows cases read only. Questions for the case team go through the Hub.</span></div>`, `<button class="btn" data-a="drawerclose">Close</button><span style="flex:1"></span><button class="btn primary" data-a="fopenhub" data-id="${c.id}">${ic('arrowr', 16)} Open in the Hub</button>`); }
+      <div class="fields">${kv('Hub status', `${pill(c.caseStatus)} ${c.sub ? `<span class="muted">${esc(c.sub)}</span>` : ''}`)}${kv('Alert', x.alert ? pill(x.alert) : 'None')}${kv('Days in this status', `${x.days} business days`)}${fld('Coverage', c.coverage, false)}${fld('Assigned case manager', c.owner, false)}</div>`, `<button class="btn" data-a="drawerclose">Close</button><span style="flex:1"></span><button class="btn primary" data-a="fopencase" data-id="${c.id}">${ic('arrowr', 16)} Open case</button>`); }
   if (d.type === 'ffu') { const cur = d.id || S.facc || (myAccts()[0] || {}).id;
     return shell('New follow-up', `${accSel('fuacc', cur)}${inp('futext', 'What needs to happen', { req: 1, err: e.text, phText: 'For example, confirm EMR coding build' })}<div class="imrow" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">${inp('futype', 'Type', { opts: FFUTYPE, ph: false })}${inp('fudue', 'Due', { type: 'date', req: 1, err: e.due, v: isoOf(fmt(addDays(TODAY, 7))) })}</div>
       <div class="input"><span class="lbl">Priority</span><div class="segradio" role="radiogroup">${['High', 'Normal', 'Low'].map((p, i) => `<label><input type="radio" name="fupri" value="${p}" ${i === 1 ? 'checked' : ''}><span>${p}</span></label>`).join('')}</div></div>${chk('fureview', 'Show on the office review as an agreed next step', false)}`,
@@ -5401,7 +5400,6 @@ Object.assign(EXTRA, {
     const acc = val('flacc'), dt = val('fldate'); FACT.push({ id: 'AC' + Date.now(), acc, date: dt ? new Date(dt + 'T00:00:00') : TODAY, method: val('flmeth'), inter: val('flint'), withFor: val('flwith'), met: cks('flmet'), topics, outcome: val('flout'), prods: cks('flprod'), note: note || 'No notes', pro: ((document.querySelector('input[name=flpro]:checked') || {}).value || '1') === '1' });
     if (val('flfu') && val('flfutext')) FFU.push({ id: 'FU' + Date.now(), acc, text: val('flfutext'), type: 'Call', due: addDays(TODAY, 7), pri: 'Normal', done: false, review: false });
     S.drawer = null; toast('Activity saved'); },
-  fopenhub(t) { const id = t.dataset.id; S.app = 'hub'; try { localStorage.setItem('hp-app', 'hub'); } catch (e) { } S.drawer = null; applyApp(); openCase(id); toast('Opened the case in the Hub'); }
 });
 { const _as = EXTRA.appset; EXTRA.appset = function (t, e) { const v = t.dataset.v; if (v === S.app) return; if (v !== 'frm' && !isFRM()) return _as(t, e);
   S.app = v; try { localStorage.setItem('hp-app', v); } catch (err) { } S.menu = null; S.drawer = null; S.modal = null; applyApp();
@@ -5474,8 +5472,8 @@ function fPreview(x) {
     <div class="section-t">Where it is</div><div class="fpv-j">${FJOURNEY.map((l, i) => `<i class="${j < 0 ? '' : i < j ? 'done' : i === j ? 'on' : ''}" title="${l}"></i>`).join('')}</div><div class="fpv-jl">${j < 0 ? 'Closed' : `<b>${FJOURNEY[j]}</b> <span class="muted">· step ${j + 1} of ${FJOURNEY.length}</span>`}</div>
     <div class="fpv-kv"><div><span class="lbl">Hub status</span>${pill(c.caseStatus)}${c.sub ? `<span class="sub">${esc(c.sub)}</span>` : ''}</div><div><span class="lbl">Alert</span>${x.alert ? pill(x.alert) : '<span class="muted">None</span>'}</div><div><span class="lbl">In this status</span><span class="num">${x.days} business days</span></div><div><span class="lbl">Coverage</span>${pill(c.coverage)}</div></div>
     <div class="section-t">Sites and team</div><div class="fields">${fld('Ordering office', c.facility, false)}${fld('Scan facility', x.scan, false)}${fld('Prescriber', c.prescriber, false)}${fld('Case manager', c.owner, false)}</div>
-    <div class="fpv-act"><button class="btn" data-a="drawer" data-v="flog" data-id="${(myAccts().find(a => a.name === c.facility) || {}).id || ''}">${ic('edit', 16)} Log activity</button><button class="btn" data-a="fcasepdf" data-id="${c.id}">${ic('download', 16)} Case summary PDF</button><button class="btn primary" data-a="fopenhub" data-id="${c.id}">${ic('arrowr', 16)} Open in the Hub</button></div>
-    <p class="muted" style="font-size:12px;margin:8px 0 0">Read only. Questions for the case team go through the Hub.</p></div></aside>`;
+    <div class="fpv-act"><button class="btn" data-a="drawer" data-v="flog" data-id="${(myAccts().find(a => a.name === c.facility) || {}).id || ''}">${ic('edit', 16)} Log activity</button><button class="btn" data-a="fcasepdf" data-id="${c.id}">${ic('download', 16)} Case summary PDF</button></div>
+    <p class="muted" style="font-size:12px;margin:8px 0 0"></p></div></aside>`;
 }
 ROUTES_X['f-cases'] = () => { const G = CASE_G(), all = frmCases(), F = fApply('fcase', G, all, x => `${x.c.id} ${x.ini} ${prodOf(x.c)} ${x.c.facility} ${x.scan} ${x.c.caseStatus}`), L = F.rows.sort((p, q) => q.days - p.days);
   const sel = L.find(x => x.c.id === S.fcsel) || L[0];
@@ -5682,6 +5680,125 @@ window.addEventListener('resize', fitNav);
    Each module's versions carry the number of the Hub release they shipped with. */
 { const map = { p1: 'V3', p2: 'V6', p3: 'V12' }; HCP_VERSIONS.forEach(v => { if (map[v[0]]) v[1] = map[v[0]]; }); }
 FRM_VERSIONS.forEach(v => { if (v[0] === 'f1') v[1] = 'V12'; });
+/* ================= FRM Workspace: client feedback (Sarah) =================
+   No link from FRM to the Hub; territory filter across FRMs; two rows of status tiles on Cases;
+   a full case view with all case and patient details; notes and document uploads on cases. */
+
+/* ---------- Cases across every FRM territory ---------- */
+const frmOfAcct = (name) => frmAccounts().find(a => a.name === name);
+const terrLabel = (a) => a ? `${a.frm}${a.area ? ' · ' + a.area.replace(/^FRM /, '') : ''}` : 'Unassigned';
+const myTerr = () => terrLabel(frmAccounts().find(a => a.frm === frmMe().name));
+const allFrmCases = () => { const names = new Set(frmAccounts().map(a => a.name));
+  return CASES.filter(c => names.has(c.facility) || names.has((imgOf(c) || {}).name)).map(c => { const x = fcase(c), a = frmOfAcct(c.facility) || frmOfAcct(x.scan); x.frm = a ? a.frm : 'Unassigned'; x.terr = terrLabel(a); return x; }); };
+const pname = (c) => `${c.last}, ${c.first}`;
+const pfull = (c) => `${c.first} ${c.mi ? c.mi + '. ' : ''}${c.last}`;
+const CASE_G2 = () => [
+  { key: 'terr', label: 'FRM territory', get: x => x.terr },
+  { key: 'stage', label: 'Stage', opts: FSTAGES.slice(1).map(z => z[1]), get: x => stageOf(x.c), hide: true },
+  { key: 'status', label: 'Case status', opts: CASE_STATUS, get: x => x.c.caseStatus, hide: true },
+  { key: 'alert', label: 'Alert', opts: ['Missing information', 'Payer delay', 'Denial', 'Signature needed', 'None'], get: x => x.alert || 'None' },
+  { key: 'prod', label: 'Product', opts: PRODS, get: x => prodOf(x.c) },
+  { key: 'cov', label: 'Coverage', get: x => x.c.coverage, closed: true },
+  { key: 'days', label: 'Days in status', opts: ['Under 5', '5 to 10', 'Over 10'], get: x => x.days < 5 ? 'Under 5' : x.days <= 10 ? '5 to 10' : 'Over 10', closed: true },
+  { key: 'office', label: 'Ordering office', get: x => x.c.facility, closed: true },
+  { key: 'scan', label: 'Scan facility', get: x => x.scan, closed: true },
+  { key: 'cm', label: 'Case manager', get: x => x.c.owner, closed: true }];
+function casePF() { const G = CASE_G2(); if (!S.pf.fcase) S.pf.fcase = {}; const st = S.pf.fcase; G.forEach(g => { if (!st[g.key]) st[g.key] = new Set(); });
+  if (!S.fterrInit) { S.fterrInit = 1; if (!st.terr.size) st.terr.add(myTerr()); } return st; }
+
+/* ---------- Two rows of tiles that filter by stage, then by case status ---------- */
+function caseTiles(all, st, passEx) { const base = all.filter(x => passEx(x, ['stage', 'status'])), avg = (L) => L.length ? Math.round(L.reduce((p, q) => p + q.days, 0) / L.length) : 0;
+  const t1 = FSTAGES.slice(1).map(([k, l, f]) => { const L = base.filter(x => f(x.c)), on = st.stage.has(l);
+    return `<button class="ftile ${on ? 'on' : ''}" data-a="ftstage" data-v="${esc(l)}" aria-pressed="${on}"><b class="num">${L.length}</b><span>${l}</span><em>${L.length ? `avg ${avg(L)} days` : '&nbsp;'}</em></button>`; }).join('');
+  const inStage = st.stage.size ? CASE_STATUS.filter(s => base.some(x => x.c.caseStatus === s && st.stage.has(stageOf(x.c)))) : CASE_STATUS;
+  const t2 = inStage.map(s => { const L = base.filter(x => x.c.caseStatus === s && (!st.stage.size || st.stage.has(stageOf(x.c)))), on = st.status.has(s);
+    return `<button class="ftile sm ${on ? 'on' : ''}" data-a="ftstatus" data-v="${esc(s)}" aria-pressed="${on}"><b class="num">${L.length}</b><span>${esc(s)}</span><em>${L.length ? `avg ${avg(L)} days` : '&nbsp;'}</em></button>`; }).join('');
+  return `<div class="ftiles">${t1}</div><div class="ftiles t2">${t2}</div><p class="muted" style="font-size:12px;margin:0">Case count and average business days in the current status. Select a tile to filter the list, and select it again to clear.</p>`; }
+
+/* ---------- Case preview (no link to the Hub) ---------- */
+fPreview = function (x) {
+  if (!x) return `<aside class="dock right ${S.fdockR ? '' : 'closed'}" aria-label="Case preview"><div class="dock-head">${ic('file', 16)}<h3>Preview</h3><button class="iconbtn" data-a="fdockR" aria-label="Toggle preview">${ic(S.fdockR ? 'chevr' : 'chevl', 16)}</button><span class="vlabel">Preview</span></div><div class="dock-body"><div class="fpv-empty">${ic('file', 28)}<b>Select a case</b><span>Select a row to preview the case.</span></div></div></aside>`;
+  const c = x.c, j = jIdx(c), ini = (c.first[0] + c.last[0]).toUpperCase();
+  return `<aside class="dock right ${S.fdockR ? '' : 'closed'}" aria-label="Case preview"><div class="dock-head">${ic('file', 16)}<h3>Preview</h3><button class="iconbtn" data-a="fdockR" aria-label="Toggle preview">${ic(S.fdockR ? 'chevr' : 'chevl', 16)}</button><span class="vlabel">Preview</span></div>
+  <div class="dock-body"><div style="display:flex;gap:10px;align-items:center"><span class="avatar" style="background:var(--green-50);color:var(--green-700);width:40px;height:40px">${ini}</span><div><div style="font:600 15px var(--f-head)">${esc(pfull(c))}</div><div class="muted" style="font-size:12.5px">DOB ${fmt(c.dob)} · <span class="mono">${c.id}</span> · ${esc(prodOf(c))}</div></div></div>
+    <div class="section-t">Where it is</div><div class="fpv-j">${FJOURNEY.map((l, i) => `<i class="${j < 0 ? '' : i < j ? 'done' : i === j ? 'on' : ''}" title="${l}"></i>`).join('')}</div><div class="fpv-jl">${j < 0 ? 'Closed' : `<b>${FJOURNEY[j]}</b> <span class="muted">· step ${j + 1} of ${FJOURNEY.length}</span>`}</div>
+    <div class="fpv-kv"><div><span class="lbl">Case status</span>${pill(c.caseStatus)}${c.sub ? `<span class="sub">${esc(c.sub)}</span>` : ''}</div><div><span class="lbl">Alert</span>${x.alert ? pill(x.alert) : '<span class="muted">None</span>'}</div><div><span class="lbl">In this status</span><span class="num">${x.days} business days</span></div><div><span class="lbl">Coverage</span>${pill(c.coverage)}</div></div>
+    <div class="section-t">Sites and team</div><div class="fields">${fld('Ordering office', c.facility, false)}${fld('Scan facility', x.scan, false)}${fld('Prescriber', c.prescriber, false)}${fld('Case manager', c.owner, false)}${fld('FRM', x.frm || '', false)}</div>
+    <div class="fpv-act"><button class="btn primary" data-a="fopencase" data-id="${c.id}">${ic('arrowr', 16)} Open case</button><button class="btn" data-a="fcnote" data-id="${c.id}">${ic('edit', 16)} Add note</button><button class="btn" data-a="fcdoc" data-id="${c.id}">${ic('upload', 16)} Upload document</button></div></div></aside>`;
+};
+
+ROUTES_X['f-cases'] = () => { const G = CASE_G2(), st = casePF(), all = allFrmCases(), q = (S.pq.fcase || '').toLowerCase().trim();
+  const txt = (x) => `${x.c.id} ${pname(x.c)} ${pfull(x.c)} ${fmt(x.c.dob)} ${prodOf(x.c)} ${x.c.facility} ${x.scan} ${x.c.caseStatus} ${x.frm}`.toLowerCase();
+  const passEx = (x, ex) => G.every(g => ex.includes(g.key) || !st[g.key].size || fvals(g, x).some(v => st[g.key].has(v))) && (!q || txt(x).includes(q));
+  const L = all.filter(x => passEx(x, [])).sort((p, r) => r.days - p.days), sel = L.find(x => x.c.id === S.fcsel) || null;
+  const F = { st, pass: (x, skip) => passEx(x, [skip]) };
+  const terrs = [...st.terr], one = terrs.length === 1 && terrs[0] === myTerr();
+  const cols = [['Case', '96px', x => `<a href="#" class="mono" data-a="fopencase" data-id="${x.c.id}">${x.c.id}</a>`], ['Patient', '170px', x => `<b>${esc(pname(x.c))}</b><span class="sub">DOB ${fmt(x.c.dob)}</span>`], ['Product', '96px', x => esc(prodOf(x.c))], ['Status', 'auto', x => pill(x.c.caseStatus) + (x.c.sub ? `<span class="sub">${esc(x.c.sub)}</span>` : '')],
+    ['Alert', '160px', x => x.alert ? pill(x.alert) : '<span class="muted">None</span>'], ['Days', '60px', x => `<span class="num">${x.days}</span>`, 'r']];
+  if (!(S.fdockL && S.fdockR)) cols.push(['Ordering office', '180px', x => esc(x.c.facility)], ['Scan facility', '170px', x => esc(x.scan)]);
+  if (!one) cols.push(['FRM', '140px', x => esc(x.frm)]);
+  const head = `<div class="pagehead"><div><h1>${one ? 'My cases' : terrs.length ? 'Cases' : 'All FRM cases'}</h1><div class="muted" style="font-size:13px">${one ? `Cases where your accounts are the ordering office or the scan facility, ${esc(frmMe().area)}` : terrs.length ? `${terrs.length} territor${terrs.length === 1 ? 'y' : 'ies'}: ${esc(terrs.join(', '))}` : 'Every FRM territory'}</div></div><span style="flex:1"></span><button class="btn" data-a="fexport">${ic('download', 16)} Export</button></div>`;
+  const body = `<section class="card"><div class="card-b" style="display:flex;flex-direction:column;gap:10px">${caseTiles(all, st, passEx)}</div></section>
+    <section class="card"><div class="card-h fhead">${tableSearch('fcase', 'Search case ID, patient, DOB or office')}<span class="muted num" style="font-size:13px;margin-left:auto">${L.length} of ${all.length} cases</span></div>
+    ${dtable(cols, L, { rowAct: x => `data-a="fcsel" data-id="${x.c.id}"`, sel: x => sel && x.c.id === sel.c.id, empty: 'No cases match these filters.' })}</section>`;
+  return fWork(fDock('fcase', G, all, F), head + fChips('fcase', G.filter(g => !g.hide || st[g.key].size)) + body, fPreview(sel)); };
+
+/* ---------- Account Cases tab and Today: open the case view ---------- */
+fcaseTable = function (L, acct) { return `<div class="tablewrap"><table class="dt fcases"><thead><tr><th>Case</th><th>Patient</th><th>Product</th><th>Status</th><th>Alert</th><th class="r">Days in status</th>${acct ? '<th>Role</th>' : '<th>Ordering office</th><th>Scan facility</th>'}</tr></thead><tbody>${L.map(x => `<tr class="click" data-a="fopencase" data-id="${x.c.id}"><td class="mono">${x.c.id}</td><td><b>${esc(pname(x.c))}</b><span class="sub">DOB ${fmt(x.c.dob)}</span></td><td>${esc(prodOf(x.c))}</td><td>${pill(x.c.caseStatus)}${x.c.sub ? `<span class="sub">${esc(x.c.sub)}</span>` : ''}</td><td>${x.alert ? pill(x.alert) : '<span class="muted">None</span>'}</td><td class="r num">${x.days}</td>${acct ? `<td>${x.c.facility === acct.name ? 'Ordering office' : 'Scan facility'}</td>` : `<td>${esc(x.c.facility)}</td><td>${esc(x.scan)}</td>`}</tr>`).join('') || '<tr><td colspan="8" class="muted">No cases.</td></tr>'}</tbody></table></div>`; };
+{ const _t = ROUTES_X['f-today']; ROUTES_X['f-today'] = () => _t().split('data-a="drawer" data-v="fcase"').join('data-a="fopencase"'); }
+
+/* ---------- Case view: every case and patient detail, notes and documents ---------- */
+const FCN = {}, FCD = {};
+const caseNotes = (c) => FCN[c.id] || (FCN[c.id] = NOTES.map(([by, type, when, text]) => ({ by, type, when, text, team: 'Case team' })));
+const caseDocs = (c) => FCD[c.id] || (FCD[c.id] = DOCS.slice(0, 7).map(([name, cat, date, by, size]) => ({ name, cat, date, by, size })));
+const pickCode = (list, c, k) => list && list.length ? list[(hashId(c.id) >> k) % list.length] : null;
+ROUTES_X['f-case'] = () => { const c = byId(S.fcaseId); if (!c) return '<div class="page"><div class="emptyline">Case not found.</div></div>';
+  seedImg12(c); const x = fcase(c), j = jIdx(c), a = frmOfAcct(c.facility) || frmOfAcct(x.scan), fac = FACILITIES.find(f => f.name === c.facility) || {}, loc = (fac.locs || [])[0] || {}, im = imgOf(c) || {}, F = FORM12[prodOf(c)] || {}, t = terr12(presZipCase(c), prodOf(c)) || {};
+  const icd = pickCode(F.icd, c, 1), cpt = pickCode(F.cpt, c, 3), tab = S.fctab || 'details', notes = caseNotes(c), docs = caseDocs(c);
+  const card = (title, icon, rows) => `<section class="card fccard"><div class="card-h"><h3>${ic(icon, 16)} ${title}</h3></div><div class="card-b"><div class="fields">${rows}</div></div></section>`;
+  const details = `<div class="fcgrid">
+    ${card('Patient', 'users', fld('Name', pfull(c)) + fld('Patient ID', c.pid) + fld('Date of birth', fmt(c.dob)) + fld('Gender', c.gender, false) + fld('Phone', c.phone) + fld('Address', `${c.street}, ${c.city}`) + fld('Preferred language', c.lang, false) + fld('Best time to contact', c.best, false) + fld('Alternate contact', c.alt, false))}
+    ${card('Case', 'file', fld('Case ID', c.id) + kv('Case status', `${pill(c.caseStatus)}${c.sub ? ` <span class="muted">${esc(c.sub)}</span>` : ''}`) + kv('Alert', x.alert ? pill(x.alert) : 'None') + fld('Days in this status', `${x.days} business days`, false) + fld('Case started', fmt(c.start), false) + fld('Last updated', fmt(c.updated), false) + fld('Case manager', c.owner, false))}
+    ${card('Insurance and coverage', 'shield', fld('Payer', c.payer, false) + fld('Member ID', `${(c.payer || 'MB').replace(/[^A-Z]/g, '').slice(0, 3) || 'MBR'}${String(hashId(c.id)).padStart(9, '0').slice(0, 9)}`) + kv('Coverage', pill(c.coverage)) + kv('Authorization', c.ar === 'None' ? 'None' : pill(c.ar)))}
+    ${card('Product and imaging', 'pill', fld('Product', prodOf(c), false) + fld('NDC', F.ndc || '') + fld('HCPCS', F.hcpcs || '') + fld('Diagnosis (ICD-10)', icd ? `${icd[0]} ${icd[1]}` : '') + fld('Procedure (CPT)', cpt ? `${cpt[0]} ${cpt[1]}` : '') + fld('Scheduled imaging date', c.sched || 'Not scheduled', false) + fld('Scan facility', im.name || 'Not set', false) + fld('Scan facility phone', im.phone || '') + fld('Scan facility fax', im.fax || ''))}
+    ${card('Prescriber and ordering office', 'building', fld('Prescriber', c.prescriber, false) + fld('Ordering office', c.facility, false) + fld('Address', loc.st ? `${loc.st}, ${loc.city}` : '') + fld('Phone', fac.phone || '') + fld('Fax', fac.fax || '') + fld('NPI', fac.npi || ''))}
+    ${card('Care team', 'users', fld('Case manager', c.owner, false) + fld('Field reimbursement manager', a ? a.frm : (t.frm || 'Unassigned'), false) + fld('Sales account manager', t.sam || 'Unassigned', false))}</div>`;
+  const notesTab = `<section class="card"><div class="card-h"><h2>Notes <span class="count">${notes.length}</span></h2><button class="btn primary" data-a="fcnote" data-id="${c.id}">${ic('plus', 16)} Add note</button></div>
+    <div class="fcnotes">${notes.map(n => `<div class="fcnote"><div class="fcn-h"><b>${esc(n.by)}</b><span class="frtag">${esc(n.type)}</span>${n.team === 'FRM' ? '<span class="pill nodot t-ok">FRM note</span>' : '<span class="pill nodot t-neutral">Case team</span>'}<span class="muted num">${esc(n.when)}</span></div><p>${esc(n.text)}</p></div>`).join('')}</div></section>`;
+  const docsTab = `<section class="card"><div class="card-h"><h2>Documents <span class="count">${docs.length}</span></h2><button class="btn primary" data-a="fcdoc" data-id="${c.id}">${ic('upload', 16)} Upload document</button></div>
+    ${dtable([['Document', 'auto', d => `<span class="doccell">${ic('file', 16)}<span><b>${esc(d.name)}</b>${d.desc ? `<span class="sub">${esc(d.desc)}</span>` : ''}</span></span>`], ['Category', '170px', d => esc(d.cat)], ['Added', '110px', d => `<span class="num">${esc(d.date)}</span>`], ['By', '150px', d => esc(d.by)], ['Size', '80px', d => `<span class="num">${esc(d.size)}</span>`, 'r']], docs)}</section>`;
+  return `<div class="page fcasepage"><div class="pagehead"><div><div class="crumbs"><a href="#" data-a="go" data-r="f-cases">Cases</a>${ic('chevr', 12)}<span>${c.id}</span></div></div></div>
+    <section class="card fchead"><div class="fch-top"><span class="avatar" style="width:52px;height:52px;font-size:17px;background:var(--green-50);color:var(--green-700)">${(c.first[0] + c.last[0]).toUpperCase()}</span><div class="fch-id"><h1>${esc(pfull(c))}</h1><div class="muted">DOB ${fmt(c.dob)} · Patient <span class="mono">${c.pid}</span> · Case <span class="mono">${c.id}</span> · ${esc(prodOf(c))}</div></div><span style="flex:1"></span><div class="fch-acts"><button class="btn" data-a="drawer" data-v="flog" data-id="${a ? a.id : ''}">${ic('edit', 16)} Log activity</button><button class="btn" data-a="fcdoc" data-id="${c.id}">${ic('upload', 16)} Upload document</button><button class="btn primary" data-a="fcnote" data-id="${c.id}">${ic('plus', 16)} Add note</button></div></div>
+      <div class="fch-strip"><div><span class="lbl">Case status</span>${pill(c.caseStatus)}${c.sub ? `<span class="sub">${esc(c.sub)}</span>` : ''}</div><div><span class="lbl">Alert</span>${x.alert ? pill(x.alert) : '<span class="muted">None</span>'}</div><div><span class="lbl">In this status</span><b class="num">${x.days} business days</b></div><div><span class="lbl">Coverage</span>${pill(c.coverage)}</div><div><span class="lbl">Where it is</span><div class="fpv-j">${FJOURNEY.map((l, i) => `<i class="${j < 0 ? '' : i < j ? 'done' : i === j ? 'on' : ''}" title="${l}"></i>`).join('')}</div><span class="muted" style="font-size:12px">${j < 0 ? 'Closed' : FJOURNEY[j]}</span></div></div></section>
+    <div class="tabs fctabs" role="tablist">${[['details', 'Case details'], ['notes', `Notes <span class="n num">${notes.length}</span>`], ['docs', `Documents <span class="n num">${docs.length}</span>`]].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-a="fctab" data-v="${k}">${l}</button>`).join('')}</div>
+    ${tab === 'notes' ? notesTab : tab === 'docs' ? docsTab : details}</div>`; };
+
+/* ---------- Side panels: add note, upload document ---------- */
+{ const _d = drawer; drawer = function () { const d = S.drawer; if (!isFRM() || !d || !['fnote', 'fdoc'].includes(d.type)) return _d();
+  const c = byId(d.id), e = d.err || {}, enter = LAST_DRAWER !== d.type + d.id && !LAST_DRAWER;
+  const shell = (title, body, foot) => `<div class="drawer-scrim ${enter ? 'enter' : ''}" data-a="drawerclose"></div><aside class="drawer ${enter ? 'enter' : ''}" role="dialog" aria-label="${esc(title)}"><div class="drawer-h"><h2>${esc(title)}</h2><button class="iconbtn" data-a="drawerclose" aria-label="Close">${ic('x', 18)}</button></div><div class="drawer-b">${body}</div><div class="drawer-f">${foot}</div></aside>`;
+  const who = `<div class="note-banner">${ic('info', 16)}<span>Case ${c.id} · ${esc(pfull(c))}. The case team sees this on the case.</span></div>`;
+  if (d.type === 'fnote') return shell('Add note', `${who}${inp('fntype', 'Type', { opts: ['Note', 'Phone log', 'Visit'], ph: false })}${inp('fntext', 'Note', { area: 1, h: 140, req: 1, err: e.text, phText: 'What happened and what the case team should know' })}`,
+    `<button class="btn" data-a="drawerclose">Cancel</button><span style="flex:1"></span><button class="btn primary" data-a="fcnotesave">Save note</button>`);
+  return shell('Upload document', `${who}<div class="input ${e.file ? 'err' : ''}"><span class="lbl">File <span class="req">*</span></span><label class="fdrop">${ic('upload', 20)}<span id="fdname">${d.file ? esc(d.file) : 'Choose a file or drop it here'}</span><input type="file" id="fdfile" hidden></label>${e.file ? `<span class="errmsg">${e.file}</span>` : ''}</div>
+    ${inp('fdcat', 'Category', { opts: ['Referral form', 'Insurance', 'Clinical notes', 'Payer correspondence', 'Prior authorization', 'Other'], ph: false })}${inp('fddesc', 'Description', { opt: 1, phText: 'For example, updated insurance card' })}`,
+    `<button class="btn" data-a="drawerclose">Cancel</button><span style="flex:1"></span><button class="btn primary" data-a="fcdocsave">Upload</button>`); }; }
+document.addEventListener('change', (e) => { if (e.target.id === 'fdfile' && S.drawer && S.drawer.type === 'fdoc') { const f = e.target.files[0]; if (!f) return; S.drawer.file = f.name; S.drawer.size = f.size; S.drawer.err = {}; const n = document.getElementById('fdname'); if (n) n.textContent = f.name; } });
+const kb = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+Object.assign(EXTRA, {
+  fopencase(t) { S.fcaseId = t.dataset.id; S.fctab = 'details'; S.drawer = null; S.route = 'f-case'; window.scrollTo(0, 0); },
+  fctab(t) { S.fctab = t.dataset.v; },
+  fcnote(t) { S.drawer = { type: 'fnote', id: t.dataset.id }; },
+  fcdoc(t) { S.drawer = { type: 'fdoc', id: t.dataset.id }; },
+  fcnotesave() { const text = val('fntext').trim(); if (!text) { S.drawer.err = { text: 'Write the note' }; return; } const c = byId(S.drawer.id);
+    caseNotes(c).unshift({ by: frmMe().name, type: val('fntype') || 'Note', when: `${fmt(TODAY)} ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`, text, team: 'FRM' }); S.drawer = null; toast('Note added to the case'); if (S.route === 'f-case') S.fctab = 'notes'; },
+  fcdocsave() { const d = S.drawer; if (!d.file) { d.err = { file: 'Choose a file to upload' }; return; } const c = byId(d.id);
+    caseDocs(c).unshift({ name: d.file, cat: val('fdcat') || 'Other', date: fmt(TODAY), by: frmMe().name, size: kb(d.size || 200000), desc: val('fddesc') }); S.drawer = null; toast('Document uploaded to the case'); if (S.route === 'f-case') S.fctab = 'docs'; },
+  ftstage(t) { const st = casePF(), v = t.dataset.v, on = st.stage.has(v); st.stage.clear(); st.status.clear(); if (!on) st.stage.add(v); },
+  ftstatus(t) { const st = casePF(), v = t.dataset.v, on = st.status.has(v); st.status.clear(); if (!on) st.status.add(v); },
+  fcalert(t) { const st = casePF(); ['stage', 'status', 'alert', 'prod', 'cov', 'days', 'office', 'scan', 'cm'].forEach(k => st[k].clear()); if (t.dataset.v && t.dataset.v !== 'all') st.alert.add(t.dataset.v); S.route = 'f-cases'; },
+  fcstage(t) { const st = casePF(); ['stage', 'status', 'alert'].forEach(k => st[k].clear()); const z = FSTAGES.find(q => q[0] === t.dataset.v); if (z && z[0] !== 'open') st.stage.add(z[1]); S.route = 'f-cases'; }
+});
 /* Runs after every version is registered: a saved version pick only sticks until a newer version ships */
 verSticky(); applyApp();
 /* ================= Navigation model ================= */
