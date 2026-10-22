@@ -1810,7 +1810,7 @@ body:not(.theme-green) .apptoggle.inbar button[aria-checked="true"],.sidenav ~ .
 .affix .pre,.affix .post{color:var(--muted);font-weight:600}
 .segradio{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--zebra)}
 .segradio label{position:relative;cursor:pointer}
-.segradio input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.segradio input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer;-webkit-appearance:none;appearance:none}
 .segradio span{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:7px;font-size:13px;font-weight:600;color:var(--ink-2);transition:background .15s,color .15s}
 .segradio input:checked+span{background:var(--surface);color:var(--green-700);box-shadow:0 0 0 1px var(--green) inset,0 1px 2px rgba(16,40,28,.12)}
 .segradio input:focus-visible+span{outline:2px solid var(--green);outline-offset:1px}
@@ -1953,6 +1953,77 @@ body:not(.theme-green) .apptoggle.inbar button[aria-checked="true"],.sidenav ~ .
 .fwork .card-h h2 .count{font:600 12px var(--f-body);padding:1px 8px;border-radius:10px;background:var(--neutral-50);color:var(--neutral);margin-left:6px}
 .fwork .card-h h2 .count{}
 .fwork .dt td .fac-p{display:flex;flex-wrap:wrap;gap:4px}
+/* Tablet and small screens: side panels stay available as strips that open as flyouts */
+@media (max-width:1180px){
+  body .workspace{position:relative}
+  body .workspace > .dock:not(.patientdock){display:flex!important}
+  body .workspace > .dock.closed:not(.patientdock){width:44px!important;min-width:44px;flex:none;position:sticky;top:72px;height:calc(100vh - 84px);margin:12px 0!important;border-radius:14px;overflow:hidden;cursor:pointer}
+  body .workspace > .dock:not(.closed):not(.patientdock){position:fixed!important;top:72px!important;bottom:12px;height:auto!important;width:min(340px,86vw)!important;margin:0!important;z-index:39;border-radius:18px;box-shadow:0 30px 70px -10px rgba(10,30,20,.5),0 0 0 1px rgba(255,255,255,.4)!important;transform:none!important}
+  body .workspace > .dock:not(.closed):not(.right):not(.patientdock){left:12px}
+  body .workspace > .dock.right:not(.closed):not(.patientdock){right:12px;left:auto}
+  body .workspace > .center{margin:12px 8px!important;transform:none!important;filter:none!important;min-width:0}
+  body .workspace > .dock.closed .vlabel{display:block!important;position:absolute;top:60px;left:15px;writing-mode:vertical-rl;opacity:1!important}
+  body .workspace > .dock.closed .dock-head{flex-direction:column;align-items:center;padding:14px 0;border:0}
+  body .workspace > .dock.closed .dock-head > .iconbtn{display:none}
+}
+@media (max-width:900px){
+  body .workspace > .dock.patientdock{display:flex!important}
+  body .workspace > .dock.patientdock.closed{width:44px!important;flex:none;position:sticky;top:72px;height:calc(100vh - 84px);margin:12px 0!important;border-radius:14px;overflow:hidden;cursor:pointer}
+  body .workspace > .dock.patientdock:not(.closed){position:fixed!important;top:72px;bottom:12px;right:12px;height:auto!important;width:min(360px,88vw)!important;z-index:39;border-radius:18px;box-shadow:0 30px 70px -10px rgba(10,30,20,.5)}
+  /* Sub-menus from the mobile nav open as a panel over the menu, with a way back */
+  .mega{position:fixed!important;top:60px!important;left:0;right:0;z-index:42!important;max-height:calc(100vh - 60px);overflow:auto;box-shadow:0 18px 30px -12px rgba(0,0,0,.35)!important;padding:8px 12px 16px!important}
+  body .mega .mega-back{display:flex}
+}
+.mega .mega-back{display:none;align-items:center;gap:6px;border:0;background:none;font:600 14px var(--f-body);color:var(--green-700,#2f6b4a);padding:10px 4px 12px;cursor:pointer}
+/* App switcher, data freshness, FRM avatar details */
+.appsw{position:relative;flex:none;margin-right:6px}
+.appsw-btn{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;border:0;background:rgba(255,255,255,.12);color:#fff;cursor:pointer}
+.appsw-btn:hover,.appsw-btn[aria-expanded=true]{background:rgba(255,255,255,.22)}
+.nav-white .appsw-btn{background:var(--zebra);color:var(--ink)}
+.sidenav .appsw-btn{background:rgba(255,255,255,.12)}
+.appsw-pop{position:absolute;top:44px;left:0;width:300px;padding:8px;z-index:60}
+.appsw-h{font:700 11px var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px 8px}
+.appsw-i{display:flex;align-items:center;gap:12px;width:100%;padding:10px;border:0;border-radius:10px;background:none;text-align:left;cursor:pointer;color:var(--ink);font:inherit}
+.appsw-i:hover{background:var(--zebra)}.appsw-i.on{background:var(--green-50,#eef6f1)}
+.appsw-i > span:nth-child(2){flex:1;display:flex;flex-direction:column}.appsw-i b{font:600 14px var(--f-head)}.appsw-i > span:nth-child(2) span{font-size:12px;color:var(--muted)}
+.appsw-ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--green);color:#fff;flex:none}
+.appsw-i > svg{color:var(--green-700,#2f6b4a)}
+.appsw-f{font-size:11.5px;color:var(--muted);padding:8px 8px 2px;border-top:1px solid var(--line);margin-top:6px}
+.asof{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:9px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);font-size:12px;white-space:nowrap;margin-right:8px}
+.asof b{color:#fff;font-weight:600}
+@media (max-width:1180px){.asof-l{display:none}}
+@media (max-width:760px){.asof{display:none}}
+.frm-app .acctmenu{min-width:300px}
+.frm-app .acctmenu .acct-h span{white-space:normal;overflow:visible}
+.acct-mode{padding:4px 8px 6px}.acct-mode .segradio{width:100%}.acct-mode .segradio label{flex:1}.acct-mode .segradio span{justify-content:center}
+/* FRM dark mode: custom FRM pieces */
+.theme-dark.frm-app{--zebra:rgba(255,255,255,.05)}
+.theme-dark.frm-app .facard,.theme-dark.frm-app .fa-ans button,.theme-dark.frm-app .fpv-m > div,.theme-dark.frm-app .fa-meta > div{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);color:inherit}
+.theme-dark.frm-app .fa-ans button.on{background:rgba(120,200,150,.16)}
+.theme-dark.frm-app .fa-ans button.on.no{background:rgba(230,100,100,.16)}.theme-dark.frm-app .fa-ans button.on.inproc{background:rgba(230,180,70,.16)}.theme-dark.frm-app .fa-ans button.on.unk{background:rgba(255,255,255,.08)}
+.theme-dark.frm-app .fpv-fu,.theme-dark.frm-app .fa-k,.theme-dark.frm-app .appsw-i.on,.theme-dark.frm-app .fu.sel{background:rgba(120,200,150,.14)}
+.theme-dark.frm-app .fa-k,.theme-dark.frm-app .fa-pill{color:#bfe6cc}
+.theme-dark.frm-app .fa-pill{background:rgba(120,200,150,.16)}.theme-dark.frm-app .fa-pill.no{background:rgba(230,100,100,.18);color:#f3b4b4}.theme-dark.frm-app .fa-pill.inproc{background:rgba(230,180,70,.18);color:#f0d38f}.theme-dark.frm-app .fa-pill.unk{background:rgba(255,255,255,.08);color:#c6ccd1}
+.theme-dark.frm-app .frtag{background:rgba(255,255,255,.08);color:#d8e2dc}
+.theme-dark.frm-app .praclogo,.theme-dark.frm-app .logoprev{background:#fff}
+.theme-dark.frm-app.stack-docks .workspace > .center,body.theme-dark.frm-app .workspace > .center{background:rgba(18,28,22,.92)!important;border-color:rgba(255,255,255,.08)!important;box-shadow:0 30px 70px -24px rgba(0,0,0,.6)!important}
+.theme-dark.frm-app .stack-docks .dock.right,.theme-dark.frm-app .workspace > .dock.right{background:#16211b;color:var(--ink)}
+.theme-dark.frm-app .workspace > .dock.right .dock-head{background:transparent}
+.theme-dark.frm-app .asof{background:rgba(255,255,255,.08)}
+.theme-dark .btile:not(.b-hero){background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.09)!important;box-shadow:0 18px 40px -24px rgba(0,0,0,.7)!important}
+.theme-dark .b-hero .btn[data-v="flog"],.theme-dark .b-hero .btn.white{color:#1d3d29!important}
+/* Compact top nav (set by fitNav when the menu items do not fit) */
+.nav-compact .topnav .menu{display:none}
+.nav-compact .mobile-only{display:inline-grid!important}
+.nav-compact .topnav .menu.open{display:flex;flex-direction:column;position:absolute;top:60px;left:0;right:0;margin:0;padding:8px;gap:2px;background:color-mix(in srgb,var(--green-700,#2f6b4a) 78%,#0b1a12);border-bottom:0;box-shadow:0 18px 30px -12px rgba(0,0,0,.35)}
+.nav-compact .topnav .menu.open > button{justify-content:flex-start;width:100%;height:44px;padding:0 14px;border-radius:8px;color:rgba(255,255,255,.88);background:none!important;box-shadow:none}
+.nav-compact .topnav .menu.open > button:hover{background:rgba(255,255,255,.08)!important;color:#fff}
+.nav-compact .topnav .menu.open > button.on{background:rgba(255,255,255,.14)!important;color:#fff;box-shadow:inset 3px 0 0 #a8dcb9}
+.nav-compact .topnav .menu.open > button::after,.nav-compact .topnav .menu.open > button::before{display:none!important}
+.nav-compact .mega{position:fixed!important;top:60px!important;left:0;right:0;z-index:42!important;max-height:calc(100vh - 60px);overflow:auto;padding:8px 12px 16px!important;box-shadow:0 18px 30px -12px rgba(0,0,0,.35)!important}
+.nav-compact .mega .two{grid-column:auto}.nav-compact .mega .two .mitems{grid-template-columns:1fr}
+body.nav-compact .mega .mega-back{display:flex}
+.nav-compact .topnav .row{overflow:visible}
 /* Portal V3 branding */
 .praclogo{display:inline-flex;align-items:center;height:40px;padding:4px 10px;border-radius:9px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.12);flex:none}
 .praclogo img{max-height:32px;max-width:200px;width:auto;display:block}
@@ -2154,6 +2225,21 @@ html.hue-blue .fpv-empty b{color:var(--ink,#1d242b)}
 html.hue-blue .fpv-fu{background:var(--green-50,#eef2f6)}
 html.hue-blue .fu.click:hover{background:rgba(47,75,107,.05)}
 html.hue-blue .fu.sel{background:var(--green-50,#eef2f6);box-shadow:inset 3px 0 0 var(--green-700,#2f4b6b)}
+@media (max-width:1180px){html.hue-blue body .workspace > .dock:not(.closed):not(.patientdock){box-shadow:0 30px 70px -10px rgba(10,19,30,.5),0 0 0 1px rgba(255,255,255,.4)!important}}
+@media (max-width:900px){html.hue-blue body .workspace > .dock.patientdock:not(.closed){box-shadow:0 30px 70px -10px rgba(10,19,30,.5)}}
+html.hue-blue .mega .mega-back{color:var(--green-700,#2f4b6b)}
+html.hue-blue .appsw-i.on{background:var(--green-50,#eef2f6)}
+html.hue-blue .appsw-i > svg{color:var(--green-700,#2f4b6b)}
+html.hue-blue .theme-dark.frm-app .fa-ans button.on{background:rgba(120,157,200,.16)}
+html.hue-blue .theme-dark.frm-app .fpv-fu, html.hue-blue .theme-dark.frm-app .fa-k, html.hue-blue .theme-dark.frm-app .appsw-i.on, html.hue-blue .theme-dark.frm-app .fu.sel{background:rgba(120,157,200,.14)}
+html.hue-blue .theme-dark.frm-app .fa-k, html.hue-blue .theme-dark.frm-app .fa-pill{color:#bfd1e6}
+html.hue-blue .theme-dark.frm-app .fa-pill{background:rgba(120,157,200,.16)}
+html.hue-blue .theme-dark.frm-app .frtag{color:#d8dde2}
+html.hue-blue .theme-dark.frm-app.stack-docks .workspace > .center, html.hue-blue body.theme-dark.frm-app .workspace > .center{background:rgba(18,23,28,.92)!important}
+html.hue-blue .theme-dark.frm-app .stack-docks .dock.right, html.hue-blue .theme-dark.frm-app .workspace > .dock.right{background:#161b21}
+html.hue-blue .theme-dark .b-hero .btn[data-v="flog"], html.hue-blue .theme-dark .b-hero .btn.white{color:#1d2c3d!important}
+html.hue-blue .nav-compact .topnav .menu.open{background:color-mix(in srgb,var(--green-700,#2f4b6b) 78%,#0b121a)}
+html.hue-blue .nav-compact .topnav .menu.open > button.on{box-shadow:inset 3px 0 0 #a8c0dc}
 html.hue-blue .autobar.done{background:var(--ok-50,#eaeff5)}
 html.hue-red{--hover:#f3eaeb;--green:#703e45;--green-700:#542d32;--green-50:#f3eaeb;--green-100:#e6d3d6;--green-grad:linear-gradient(135deg,#895058 0%,#52242a 100%)}
 html.hue-red .rail .railbtn{color:#ebdcde}
@@ -2314,6 +2400,21 @@ html.hue-red .fpv-empty b{color:var(--ink,#2b1d1f)}
 html.hue-red .fpv-fu{background:var(--green-50,#f6eeef)}
 html.hue-red .fu.click:hover{background:rgba(106,49,56,.05)}
 html.hue-red .fu.sel{background:var(--green-50,#f6eeef);box-shadow:inset 3px 0 0 var(--green-700,#6a3138)}
+@media (max-width:1180px){html.hue-red body .workspace > .dock:not(.closed):not(.patientdock){box-shadow:0 30px 70px -10px rgba(30,10,13,.5),0 0 0 1px rgba(255,255,255,.4)!important}}
+@media (max-width:900px){html.hue-red body .workspace > .dock.patientdock:not(.closed){box-shadow:0 30px 70px -10px rgba(30,10,13,.5)}}
+html.hue-red .mega .mega-back{color:var(--green-700,#6a3138)}
+html.hue-red .appsw-i.on{background:var(--green-50,#f6eeef)}
+html.hue-red .appsw-i > svg{color:var(--green-700,#6a3138)}
+html.hue-red .theme-dark.frm-app .fa-ans button.on{background:rgba(198,122,132,.16)}
+html.hue-red .theme-dark.frm-app .fpv-fu, html.hue-red .theme-dark.frm-app .fa-k, html.hue-red .theme-dark.frm-app .appsw-i.on, html.hue-red .theme-dark.frm-app .fu.sel{background:rgba(198,122,132,.14)}
+html.hue-red .theme-dark.frm-app .fa-k, html.hue-red .theme-dark.frm-app .fa-pill{color:#e5c0c5}
+html.hue-red .theme-dark.frm-app .fa-pill{background:rgba(198,122,132,.16)}
+html.hue-red .theme-dark.frm-app .frtag{color:#e2d8da}
+html.hue-red .theme-dark.frm-app.stack-docks .workspace > .center, html.hue-red body.theme-dark.frm-app .workspace > .center{background:rgba(28,18,20,.92)!important}
+html.hue-red .theme-dark.frm-app .stack-docks .dock.right, html.hue-red .theme-dark.frm-app .workspace > .dock.right{background:#211618}
+html.hue-red .theme-dark .b-hero .btn[data-v="flog"], html.hue-red .theme-dark .b-hero .btn.white{color:#3c1e22!important}
+html.hue-red .nav-compact .topnav .menu.open{background:color-mix(in srgb,var(--green-700,#6a3138) 78%,#1a0b0d)}
+html.hue-red .nav-compact .topnav .menu.open > button.on{box-shadow:inset 3px 0 0 #dba9b0}
 html.hue-red .autobar.done{background:var(--ok-50,#f5eaec)}
 html.hue-purple{--hover:#efeaf3;--green:#593e70;--green-700:#422d54;--green-50:#efeaf3;--green-100:#ddd3e6;--green-grad:linear-gradient(135deg,#6e5089 0%,#3d2452 100%)}
 html.hue-purple .rail .railbtn{color:#e4dceb}
@@ -2474,6 +2575,21 @@ html.hue-purple .fpv-empty b{color:var(--ink,#241d2b)}
 html.hue-purple .fpv-fu{background:var(--green-50,#f2eef6)}
 html.hue-purple .fu.click:hover{background:rgba(79,49,106,.05)}
 html.hue-purple .fu.sel{background:var(--green-50,#f2eef6);box-shadow:inset 3px 0 0 var(--green-700,#4f316a)}
+@media (max-width:1180px){html.hue-purple body .workspace > .dock:not(.closed):not(.patientdock){box-shadow:0 30px 70px -10px rgba(21,10,30,.5),0 0 0 1px rgba(255,255,255,.4)!important}}
+@media (max-width:900px){html.hue-purple body .workspace > .dock.patientdock:not(.closed){box-shadow:0 30px 70px -10px rgba(21,10,30,.5)}}
+html.hue-purple .mega .mega-back{color:var(--green-700,#4f316a)}
+html.hue-purple .appsw-i.on{background:var(--green-50,#f2eef6)}
+html.hue-purple .appsw-i > svg{color:var(--green-700,#4f316a)}
+html.hue-purple .theme-dark.frm-app .fa-ans button.on{background:rgba(163,122,198,.16)}
+html.hue-purple .theme-dark.frm-app .fpv-fu, html.hue-purple .theme-dark.frm-app .fa-k, html.hue-purple .theme-dark.frm-app .appsw-i.on, html.hue-purple .theme-dark.frm-app .fu.sel{background:rgba(163,122,198,.14)}
+html.hue-purple .theme-dark.frm-app .fa-k, html.hue-purple .theme-dark.frm-app .fa-pill{color:#d4c0e5}
+html.hue-purple .theme-dark.frm-app .fa-pill{background:rgba(163,122,198,.16)}
+html.hue-purple .theme-dark.frm-app .frtag{color:#ddd8e2}
+html.hue-purple .theme-dark.frm-app.stack-docks .workspace > .center, html.hue-purple body.theme-dark.frm-app .workspace > .center{background:rgba(23,18,28,.92)!important}
+html.hue-purple .theme-dark.frm-app .stack-docks .dock.right, html.hue-purple .theme-dark.frm-app .workspace > .dock.right{background:#1c1621}
+html.hue-purple .theme-dark .b-hero .btn[data-v="flog"], html.hue-purple .theme-dark .b-hero .btn.white{color:#2e1e3c!important}
+html.hue-purple .nav-compact .topnav .menu.open{background:color-mix(in srgb,var(--green-700,#4f316a) 78%,#130b1a)}
+html.hue-purple .nav-compact .topnav .menu.open > button.on{box-shadow:inset 3px 0 0 #c4a9db}
 html.hue-purple .autobar.done{background:var(--ok-50,#f0eaf5)}
 html.hue-graphite{--hover:#eeefef;--green:#52585c;--green-700:#3d4144;--green-50:#eeefef;--green-100:#dadddf;--green-grad:linear-gradient(135deg,#666e73 0%,#373c3f 100%)}
 html.hue-graphite .rail .railbtn{color:#e2e4e5}
@@ -2634,6 +2750,21 @@ html.hue-graphite .fpv-empty b{color:var(--ink,#222426)}
 html.hue-graphite .fpv-fu{background:var(--green-50,#f1f2f3)}
 html.hue-graphite .fu.click:hover{background:rgba(72,78,82,.05)}
 html.hue-graphite .fu.sel{background:var(--green-50,#f1f2f3);box-shadow:inset 3px 0 0 var(--green-700,#484e52)}
+@media (max-width:1180px){html.hue-graphite body .workspace > .dock:not(.closed):not(.patientdock){box-shadow:0 30px 70px -10px rgba(19,20,21,.5),0 0 0 1px rgba(255,255,255,.4)!important}}
+@media (max-width:900px){html.hue-graphite body .workspace > .dock.patientdock:not(.closed){box-shadow:0 30px 70px -10px rgba(19,20,21,.5)}}
+html.hue-graphite .mega .mega-back{color:var(--green-700,#484e52)}
+html.hue-graphite .appsw-i.on{background:var(--green-50,#f1f2f3)}
+html.hue-graphite .appsw-i > svg{color:var(--green-700,#484e52)}
+html.hue-graphite .theme-dark.frm-app .fa-ans button.on{background:rgba(154,161,166,.16)}
+html.hue-graphite .theme-dark.frm-app .fpv-fu, html.hue-graphite .theme-dark.frm-app .fa-k, html.hue-graphite .theme-dark.frm-app .appsw-i.on, html.hue-graphite .theme-dark.frm-app .fu.sel{background:rgba(154,161,166,.14)}
+html.hue-graphite .theme-dark.frm-app .fa-k, html.hue-graphite .theme-dark.frm-app .fa-pill{color:#d0d3d5}
+html.hue-graphite .theme-dark.frm-app .fa-pill{background:rgba(154,161,166,.16)}
+html.hue-graphite .theme-dark.frm-app .frtag{color:#dbdddf}
+html.hue-graphite .theme-dark.frm-app.stack-docks .workspace > .center, html.hue-graphite body.theme-dark.frm-app .workspace > .center{background:rgba(22,23,24,.92)!important}
+html.hue-graphite .theme-dark.frm-app .stack-docks .dock.right, html.hue-graphite .theme-dark.frm-app .workspace > .dock.right{background:#1a1c1d}
+html.hue-graphite .theme-dark .b-hero .btn[data-v="flog"], html.hue-graphite .theme-dark .b-hero .btn.white{color:#2a2d30!important}
+html.hue-graphite .nav-compact .topnav .menu.open{background:color-mix(in srgb,var(--green-700,#484e52) 78%,#111314)}
+html.hue-graphite .nav-compact .topnav .menu.open > button.on{box-shadow:inset 3px 0 0 #bec3c6}
 html.hue-graphite .autobar.done{background:var(--ok-50,#eff0f0)}
 /* ==END-HUES== */
 

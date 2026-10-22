@@ -5111,7 +5111,7 @@ Object.assign(EXTRA, {
 NOTES_HCP['h-settings'] = [['Branding', 'Pick the portal color and upload the practice logo. Only facility administrators can change it.']];
 /* ================= FRM Workspace (third app): F1 · First build ================= */
 /* Rebuilt from the team's FRM prototype using the HealthPacer style guide. Data comes from the Hub (facilities, cases, territories) plus FRM-only records (assessments, activity, follow-ups). */
-const FRM_VERSIONS = [['f1', 'V1', 'First build', 'FRM Workspace rebuilt in the HealthPacer style: Today, Accounts, account health tracker, office review, Cases, Follow-ups and Activity. Filter panel on Accounts, Cases and Activity; card or table view for Accounts; previews on Cases and Follow-ups; company logo in Settings, Branding'] ];
+const FRM_VERSIONS = [['f1', 'V1', 'First build', 'FRM Workspace rebuilt in the HealthPacer style: Today, Accounts, account health tracker, office review, Cases, Follow-ups and Activity. Filter panel on Accounts, Cases and Activity; card or table view for Accounts; previews on Cases and Follow-ups; company logo in Settings, Branding; Data as of, app switcher, light and dark mode'] ];
 try { if (localStorage.getItem('hp-app') === 'frm') S.app = 'frm'; } catch (e) { }
 const isFRM = () => S.app === 'frm';
 const fBuilt = () => ['f-today', 'f-accounts', 'f-account', 'f-assess', 'f-review', 'f-cases', 'f-followups', 'f-activity', 'f-settings'].forEach(r => BUILT.includes(r) || BUILT.push(r));
@@ -5572,7 +5572,9 @@ document.addEventListener('change', (e) => { const t = e.target; if (t.id !== 'f
 Object.assign(EXTRA, { flogosample() { saveFLogo(sampleFLogo()); toast('Sample logo added'); }, flogorm() { saveFLogo(''); toast('Logo removed'); } });
 
 /* The app dropdown in the avatar menu: keep clicks on it from closing and re-rendering the menu */
-document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.appsel')) e.stopPropagation(); }, true);
+document.addEventListener('click', (e) => { const t = e.target; if (!t.closest) return; if (t.closest('.appsel')) { e.stopPropagation(); return; }
+  /* A tap on a radio or checkbox label inside a menu: let the label pass the click to its input instead of closing the menu */
+  const lab = t.closest('.menu-pop label'); if (lab && t.tagName !== 'INPUT' && lab.querySelector('input[data-a]')) e.stopPropagation(); }, true);
 
 /* ---------- Health assessment, laid out like the Hub's New case intake ---------- */
 const FAG = [['Ordering and payers', ['A', 'B', 'F']], ['Coding and billing', ['C', 'D', 'H']], ['Team and support', ['E', 'G', 'I']], ['Wrap up', ['conf', 'actions']], ['Review', ['review']]];
@@ -5621,6 +5623,60 @@ Object.assign(EXTRA, {
     if (dir > 0 && FQ.some(q => q.id === id) && !D.ans[id]) { toast(`Answer ${id} to continue`); return; }
     D.seen.add(id); D.step = FAORDER[Math.max(0, Math.min(FAORDER.length - 1, i + dir))]; window.scrollTo(0, 0); }
 });
+
+/* ---------- Tablet widths: side panels as flyouts, mobile sub-menus with a way back ---------- */
+const NARROW = () => window.innerWidth <= 1180;
+let wasNarrow = null;
+function fitDocks() { const n = NARROW(); if (n === wasNarrow) return false; wasNarrow = n;
+  if (n) { fitDocks.saved = { dockL: S.dockL, dockR: S.dockR, fdockL: S.fdockL, fdockR: S.fdockR, side: S.side }; S.dockL = false; S.dockR = false; S.fdockL = false; S.fdockR = false; if (window.innerWidth <= 900) S.side = false; return true; }
+  if (fitDocks.saved) { Object.assign(S, fitDocks.saved); fitDocks.saved = null; return true; } return false; }
+fitDocks();
+window.addEventListener('resize', () => { if (fitDocks()) render(); });
+/* Opening one flyout closes the other; a click outside an open flyout closes it */
+document.addEventListener('click', (e) => { if (!NARROW()) return; const t = e.target;
+  if (!t.closest || t.closest('.dock:not(.closed), .drawer, .modal, .modal-wrap, .menu-pop, .ms-pop, .pop-fixed, .toast')) return;
+  const strip = t.closest('.dock.closed');
+  const was = [S.dockL, S.dockR, S.fdockL, S.fdockR];
+  if (strip) { if (strip.classList.contains('right')) { S.dockL = false; S.fdockL = false; } else { S.dockR = false; S.fdockR = false; } return; }
+  if (t.closest('[data-a="sel"],[data-a="fcsel"],[data-a="ffsel"]')) { S.dockL = false; S.fdockL = false; return; }
+  S.dockL = S.dockR = S.fdockL = S.fdockR = false;
+  if (was.some(Boolean)) setTimeout(render, 0);
+}, true);
+{ const _r = render; render = function () { const out = _r.apply(this, arguments); const m = document.querySelector('.mega'); if (m && !m.querySelector('.mega-back')) m.insertAdjacentHTML('afterbegin', `<button class="mega-back" data-a="megaclose">${ic('chevl', 16)} Main menu</button>`); return out; }; }
+
+Object.assign(P, { moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>', sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>' });
+/* ---------- Client requirements: data freshness, app switcher, FRM details, light and dark mode ---------- */
+const FDATA_ASOF = () => `${fmt(TODAY)}, 6:00 AM ET`;
+const asOfChip = () => `<span class="asof" title="Account numbers and case data refresh nightly. Placeholder until the data source and refresh time are confirmed.">${ic('clock', 14)}<span class="asof-l">Data as of</span> <b class="num">${FDATA_ASOF()}</b></span>`;
+/* App switcher: a grid button beside the logo, for people who use both the Hub and the FRM Workspace */
+const APPSW = [['hub', 'HealthPacer Hub', 'Case management', 'building'], ['frm', 'FRM Workspace', 'Accounts, visits and follow-ups', 'chart']];
+function appSwitcher() { const open = S.menu === 'apps';
+  return `<div class="appsw"><button class="appsw-btn" data-a="menu" data-v="apps" aria-expanded="${open}" aria-label="Switch application" title="Switch application">${ic('grid', 18)}</button>${open ? `<div class="menu-pop appsw-pop" role="menu"><div class="appsw-h">Switch application</div>${APPSW.map(([v, l, d, i]) => `<button class="appsw-i ${S.app === v ? 'on' : ''}" data-a="appset" data-v="${v}" role="menuitemradio" aria-checked="${S.app === v}"><span class="appsw-ic">${ic(i, 18)}</span><span><b>${l}</b><span>${d}</span></span>${S.app === v ? ic('check', 16) : ''}</button>`).join('')}<div class="appsw-f">Shows the applications you have access to.</div></div>` : ''}</div>`; }
+{ const _f = frmShell; frmShell = function (c) { let h = _f(c);
+  h = h.replace('<span class="portaltag">FRM Workspace</span>', '');
+  return h.replace('<div class="util">', `<div class="util">${asOfChip()}`); }; }
+/* Light and dark mode for the FRM Workspace */
+S.fmode = 'light'; try { const m = localStorage.getItem('hp-frmmode'); if (['light', 'dark', 'system'].includes(m)) S.fmode = m; } catch (e) { }
+const fDark = () => S.fmode === 'dark' || (S.fmode === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+{ const _r = render; render = function () { const out = _r.apply(this, arguments); if (isFRM()) { document.body.classList.toggle('theme-dark', fDark()); document.body.classList.add('frm-app'); } else document.body.classList.remove('frm-app'); return out; }; }
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (isFRM() && S.fmode === 'system') render(); }); } catch (e) { }
+const modeSeg = (name) => `<div class="segradio" role="radiogroup" aria-label="Appearance">${[['light', 'Light', 'sun'], ['dark', 'Dark', 'moon'], ['system', 'System', 'monitor']].map(([v, l]) => `<label><input type="radio" name="${name}" data-a="fmode" data-v="${v}" ${S.fmode === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div>`;
+{ const _m = frmAcct; frmAcct = function () { const me = frmMe(); let h = _m();
+  h = h.replace(/<span>Field reimbursement manager · [^<]*<\/span>/, `<span>Field reimbursement manager</span><span>${esc(me.area)}</span>`);
+  const vi = h.indexOf(' Versions</div>'); if (vi < 0) return h; const si = h.lastIndexOf('<div class="acct-sub">', vi);
+  return h.slice(0, si) + `<div class="acct-sub">${ic('moon', 16)} Appearance</div><div class="acct-mode">${modeSeg('fmode-m')}</div><hr>` + h.slice(si); }; }
+EXTRA.fmode = (t) => { S.fmode = t.dataset.v; try { localStorage.setItem('hp-frmmode', S.fmode); } catch (e) { } };
+{ const _s = ROUTES_X['f-settings']; ROUTES_X['f-settings'] = () => _s().replace('<section class="card"><div class="card-h"><h2>Preview</h2>', `<section class="card"><div class="card-h"><h2>Appearance</h2></div><div class="card-b"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">${modeSeg('fmode-s')}<span class="muted" style="font-size:12.5px">System follows the light or dark setting on your device.</span></div></div></section><section class="card"><div class="card-h"><h2>Preview</h2>`); }
+
+/* ---------- Top nav: switch to the hamburger menu as soon as the items no longer fit ---------- */
+function fitNav() { const row = document.querySelector('.topnav .row'), b = document.body; if (!row || !row.querySelector('.menu')) { b.classList.remove('nav-compact'); return; }
+  const was = b.classList.contains('nav-compact'); b.classList.remove('nav-compact');
+  const cs = getComputedStyle(row), kids = [...row.children].filter(x => x.offsetParent && !(x.tagName === 'SPAN' && x.style.flex === '1 1 0%' || x.getAttribute('style') === 'flex:1'));
+  const need = kids.reduce((n, x) => n + x.getBoundingClientRect().width, 0) + (kids.length - 1) * (parseFloat(cs.columnGap) || 0) + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 32;
+  const tight = need > row.clientWidth || row.scrollWidth > row.clientWidth + 1;
+  b.classList.toggle('nav-compact', tight); if (!tight && was && S.navOpen) { S.navOpen = false; } }
+{ const _r = render; render = function () { const out = _r.apply(this, arguments); fitNav(); return out; }; }
+window.addEventListener('resize', fitNav);
 /* Runs after every version is registered: a saved version pick only sticks until a newer version ships */
 verSticky(); applyApp();
 /* ================= Navigation model ================= */
