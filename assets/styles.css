@@ -2048,6 +2048,24 @@ body.nav-compact .mega .mega-back{display:flex}
 .fdrop{display:flex;align-items:center;gap:10px;padding:16px;border:1.5px dashed var(--line);border-radius:12px;cursor:pointer;color:var(--ink-2);font-size:13.5px}.fdrop:hover{border-color:var(--green);background:var(--green-50)}
 .input.err .fdrop{border-color:var(--danger)}
 .theme-dark.frm-app .ftile.sm:not(.on){background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1)}
+/* V13 FRM case listing */
+.ff13{display:flex;flex-direction:column;gap:10px;padding-bottom:14px}
+.ff13 .ffh{font:600 12px var(--f-head);letter-spacing:.06em;text-transform:uppercase;opacity:.9;background:none;border:0;color:inherit;padding:2px 0;display:flex;align-items:center;gap:6px;text-align:left;width:100%;cursor:default}
+.ff13 .ffx{cursor:pointer}
+.ff13 .ff{display:flex;flex-direction:column;gap:4px;font-size:12.5px}
+.ff13 .ff > span{opacity:.85}
+.ff13 input,.ff13 select{height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:#fff;color:#1d2b24;padding:0 10px;font:inherit;font-size:13.5px;width:100%;min-width:0}
+.ff13 .ff2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ff13 .ffseg{width:100%;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2)}.ff13 .ffseg label{flex:1}.ff13 .ffseg span{justify-content:center;color:rgba(255,255,255,.9)}.ff13 .ffseg input:checked+span{color:var(--green-700)}
+.ftiles.t2b{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media (max-width:1180px){.ftiles.t2b{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.vsel{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.vsel label{font-size:12.5px;color:var(--muted)}.vsel select{height:36px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--surface);max-width:240px}
+.fst{font-weight:600;font-size:13px}.fst.c{color:var(--muted)}.fst.ord{color:var(--green-700)}
+.num.aging{display:inline-block;min-width:28px;padding:2px 8px;border-radius:999px;background:var(--danger-50,#fdeeea);color:var(--danger,#b8412a);font-weight:700}
+.fempty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 16px;text-align:center;color:var(--muted)}.fempty b{color:var(--ink);font-size:15px}.fempty .btn{margin-top:6px}
+.fch-strip.six{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media (max-width:1100px){.fch-strip.six{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.theme-dark.frm-app .num.aging{background:rgba(230,100,100,.2);color:#f3b4b4}
 /* Portal V3 branding */
 .praclogo{display:inline-flex;align-items:center;height:40px;padding:4px 10px;border-radius:9px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.12);flex:none}
 .praclogo img{max-height:32px;max-width:200px;width:auto;display:block}
@@ -2268,6 +2286,7 @@ html.hue-blue .ftile{background:var(--green-50,#eef2f6)}
 html.hue-blue .ftiles:first-child .ftile{background:linear-gradient(135deg,#3f5b7a,#243a53)}
 html.hue-blue .ftiles:first-child .ftile.on{box-shadow:0 0 0 3px #a8c0dc inset}
 html.hue-blue .ftile.sm.on{background:var(--green,#3d597a)}
+html.hue-blue .ff13 input, html.hue-blue .ff13 select{color:#1d242b}
 html.hue-blue .autobar.done{background:var(--ok-50,#eaeff5)}
 html.hue-red{--hover:#f3eaeb;--green:#703e45;--green-700:#542d32;--green-50:#f3eaeb;--green-100:#e6d3d6;--green-grad:linear-gradient(135deg,#895058 0%,#52242a 100%)}
 html.hue-red .rail .railbtn{color:#ebdcde}
@@ -2447,6 +2466,7 @@ html.hue-red .ftile{background:var(--green-50,#f6eeef)}
 html.hue-red .ftiles:first-child .ftile{background:linear-gradient(135deg,#794048,#52252b)}
 html.hue-red .ftiles:first-child .ftile.on{box-shadow:0 0 0 3px #dba9b0 inset}
 html.hue-red .ftile.sm.on{background:var(--green,#783f46)}
+html.hue-red .ff13 input, html.hue-red .ff13 select{color:#2b1d1f}
 html.hue-red .autobar.done{background:var(--ok-50,#f5eaec)}
 html.hue-purple{--hover:#efeaf3;--green:#593e70;--green-700:#422d54;--green-50:#efeaf3;--green-100:#ddd3e6;--green-grad:linear-gradient(135deg,#6e5089 0%,#3d2452 100%)}
 html.hue-purple .rail .railbtn{color:#e4dceb}
@@ -2626,6 +2646,7 @@ html.hue-purple .ftile{background:var(--green-50,#f2eef6)}
 html.hue-purple .ftiles:first-child .ftile{background:linear-gradient(135deg,#5e4079,#3d2552)}
 html.hue-purple .ftiles:first-child .ftile.on{box-shadow:0 0 0 3px #c4a9db inset}
 html.hue-purple .ftile.sm.on{background:var(--green,#5d3f78)}
+html.hue-purple .ff13 input, html.hue-purple .ff13 select{color:#241d2b}
 html.hue-purple .autobar.done{background:var(--ok-50,#f0eaf5)}
 html.hue-graphite{--hover:#eeefef;--green:#52585c;--green-700:#3d4144;--green-50:#eeefef;--green-100:#dadddf;--green-grad:linear-gradient(135deg,#666e73 0%,#373c3f 100%)}
 html.hue-graphite .rail .railbtn{color:#e2e4e5}
@@ -2805,6 +2826,7 @@ html.hue-graphite .ftile{background:var(--green-50,#f1f2f3)}
 html.hue-graphite .ftiles:first-child .ftile{background:linear-gradient(135deg,#575d62,#383c3f)}
 html.hue-graphite .ftiles:first-child .ftile.on{box-shadow:0 0 0 3px #bec3c6 inset}
 html.hue-graphite .ftile.sm.on{background:var(--green,#565c61)}
+html.hue-graphite .ff13 input, html.hue-graphite .ff13 select{color:#222426}
 html.hue-graphite .autobar.done{background:var(--ok-50,#eff0f0)}
 /* ==END-HUES== */
 

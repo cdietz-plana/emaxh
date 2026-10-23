@@ -5115,7 +5115,7 @@ const FRM_VERSIONS = [['f1', 'V1', 'First build', 'FRM Workspace rebuilt in the 
 try { if (localStorage.getItem('hp-app') === 'frm') S.app = 'frm'; } catch (e) { }
 const isFRM = () => S.app === 'frm';
 const fBuilt = () => ['f-today', 'f-accounts', 'f-account', 'f-assess', 'f-review', 'f-cases', 'f-followups', 'f-activity', 'f-settings', 'f-case'].forEach(r => BUILT.includes(r) || BUILT.push(r));
-if (isFRM() && !String(S.route).startsWith('f-')) S.route = 'f-today';
+if (isFRM() && !String(S.route).startsWith('f-')) S.route = 'f-cases';
 Object.assign(S, { fscope: 'mine', ffilt: 'all', fq: '', facc: null, ftab: 'overview', fcstage: 'open', fcalert: 'all', fcprod: 'all', factf: 'all' });
 
 /* ---------- Reference data (from the team prototype) ---------- */
@@ -5198,7 +5198,7 @@ const FSTAGES = [['open', 'All open', c => !['Closed', 'Complete'].includes(c.ca
 const frmCases = () => { const names = new Set(myAccts().map(a => a.name)); return CASES.filter(c => names.has(c.facility) || names.has((imgOf(c) || {}).name)).map(fcase); };
 
 /* ---------- Shell ---------- */
-const FNAV = [['f-today', 'Today'], ['f-accounts', 'Accounts'], ['f-cases', 'Cases'], ['f-followups', 'Follow-ups'], ['f-activity', 'Activity']];
+const FNAV = [['f-cases', 'My cases'], ['f-today', 'Today'], ['f-accounts', 'Accounts'], ['f-followups', 'Follow-ups'], ['f-activity', 'Activity']];
 const APPS3 = [['hub', 'HealthPacer Hub'], ['hcp', 'HCP Portal'], ['frm', 'FRM Workspace']];
 const appToggle3 = (cls = '') => { const s = cls === 'inbar';
   if (!s) return `<label class="appsel"><span class="sr">Switch app</span><select id="appsel" aria-label="Switch between the Hub, the HCP Portal and the FRM Workspace">${APPS3.map(([v, l]) => `<option value="${v}" ${S.app === v ? 'selected' : ''}>${l}</option>`).join('')}</select>${ic('chevd', 16)}</label>`; const b = (v, l, i) => `<button role="radio" aria-checked="${S.app === v}" data-a="appset" data-v="${v}">${s ? '' : ic(i, 14) + ' '}${l}</button>`;
@@ -5221,7 +5221,7 @@ function frmShell(content) {
 }
 { const _a = shellA, _b = shellB; shellA = function (c) { return isFRM() ? frmShell(c) : _a(c); }; shellB = function (c) { return isFRM() ? frmShell(c) : _b(c); }; }
 { const _n = notesPanel; notesPanel = function () { return isFRM() ? '' : _n(); }; }
-{ const _r = render; render = function () { fBuilt(); if (isFRM()) { seedFRM(); if (!String(S.route).startsWith('f-') && S.route !== 'patterns') S.route = 'f-today'; } return _r.apply(this, arguments); }; }
+{ const _r = render; render = function () { fBuilt(); if (isFRM()) { seedFRM(); if (!String(S.route).startsWith('f-') && S.route !== 'patterns') S.route = 'f-cases'; } return _r.apply(this, arguments); }; }
 
 /* ---------- Today ---------- */
 const fuRow = (f) => { const a = accOf(f.acc), d = dayDiff(f.due);
@@ -5403,7 +5403,7 @@ Object.assign(EXTRA, {
 });
 { const _as = EXTRA.appset; EXTRA.appset = function (t, e) { const v = t.dataset.v; if (v === S.app) return; if (v !== 'frm' && !isFRM()) return _as(t, e);
   S.app = v; try { localStorage.setItem('hp-app', v); } catch (err) { } S.menu = null; S.drawer = null; S.modal = null; applyApp();
-  if (v === 'frm') { seedFRM(); S.route = 'f-today'; window.scrollTo(0, 0); toast('Switched to the FRM Workspace'); } else { go(v === 'hcp' ? 'h-dash' : 'dashboard'); toast(v === 'hcp' ? 'Switched to the HCP portal' : 'Switched to the HealthPacer Hub'); } }; }
+  if (v === 'frm') { seedFRM(); S.route = 'f-cases'; window.scrollTo(0, 0); toast('Switched to the FRM Workspace'); } else { go(v === 'hcp' ? 'h-dash' : 'dashboard'); toast(v === 'hcp' ? 'Switched to the HCP portal' : 'Switched to the HealthPacer Hub'); } }; }
 /* ================= FRM Workspace: shared filter panel, table/card views, Hub-style cases ================= */
 S.fdockL = S.fdockL ?? true; S.fdockR = S.fdockR ?? true; S.faview = S.faview || 'cards'; S.fcsel = S.fcsel || null;
 const fvals = (g, r) => { const v = g.get(r); return Array.isArray(v) ? v : [v]; };
@@ -5680,6 +5680,9 @@ window.addEventListener('resize', fitNav);
    Each module's versions carry the number of the Hub release they shipped with. */
 { const map = { p1: 'V3', p2: 'V6', p3: 'V12' }; HCP_VERSIONS.forEach(v => { if (map[v[0]]) v[1] = map[v[0]]; }); }
 FRM_VERSIONS.forEach(v => { if (v[0] === 'f1') v[1] = 'V12'; });
+/* FRM-only sample cases for colleagues' territories live in FXC; cById looks in both */
+const FXC = [];
+const cById = (id) => byId(id) || FXC.find(c => c.id === id);
 /* ================= FRM Workspace: client feedback (Sarah) =================
    No link from FRM to the Hub; territory filter across FRMs; two rows of status tiles on Cases;
    a full case view with all case and patient details; notes and document uploads on cases. */
@@ -5752,7 +5755,7 @@ const FCN = {}, FCD = {};
 const caseNotes = (c) => FCN[c.id] || (FCN[c.id] = NOTES.map(([by, type, when, text]) => ({ by, type, when, text, team: 'Case team' })));
 const caseDocs = (c) => FCD[c.id] || (FCD[c.id] = DOCS.slice(0, 7).map(([name, cat, date, by, size]) => ({ name, cat, date, by, size })));
 const pickCode = (list, c, k) => list && list.length ? list[(hashId(c.id) >> k) % list.length] : null;
-ROUTES_X['f-case'] = () => { const c = byId(S.fcaseId); if (!c) return '<div class="page"><div class="emptyline">Case not found.</div></div>';
+ROUTES_X['f-case'] = () => { const c = cById(S.fcaseId); if (!c) return '<div class="page"><div class="emptyline">Case not found.</div></div>';
   seedImg12(c); const x = fcase(c), j = jIdx(c), a = frmOfAcct(c.facility) || frmOfAcct(x.scan), fac = FACILITIES.find(f => f.name === c.facility) || {}, loc = (fac.locs || [])[0] || {}, im = imgOf(c) || {}, F = FORM12[prodOf(c)] || {}, t = terr12(presZipCase(c), prodOf(c)) || {};
   const icd = pickCode(F.icd, c, 1), cpt = pickCode(F.cpt, c, 3), tab = S.fctab || 'details', notes = caseNotes(c), docs = caseDocs(c);
   const card = (title, icon, rows) => `<section class="card fccard"><div class="card-h"><h3>${ic(icon, 16)} ${title}</h3></div><div class="card-b"><div class="fields">${rows}</div></div></section>`;
@@ -5775,7 +5778,7 @@ ROUTES_X['f-case'] = () => { const c = byId(S.fcaseId); if (!c) return '<div cla
 
 /* ---------- Side panels: add note, upload document ---------- */
 { const _d = drawer; drawer = function () { const d = S.drawer; if (!isFRM() || !d || !['fnote', 'fdoc'].includes(d.type)) return _d();
-  const c = byId(d.id), e = d.err || {}, enter = LAST_DRAWER !== d.type + d.id && !LAST_DRAWER;
+  const c = cById(d.id), e = d.err || {}, enter = LAST_DRAWER !== d.type + d.id && !LAST_DRAWER;
   const shell = (title, body, foot) => `<div class="drawer-scrim ${enter ? 'enter' : ''}" data-a="drawerclose"></div><aside class="drawer ${enter ? 'enter' : ''}" role="dialog" aria-label="${esc(title)}"><div class="drawer-h"><h2>${esc(title)}</h2><button class="iconbtn" data-a="drawerclose" aria-label="Close">${ic('x', 18)}</button></div><div class="drawer-b">${body}</div><div class="drawer-f">${foot}</div></aside>`;
   const who = `<div class="note-banner">${ic('info', 16)}<span>Case ${c.id} · ${esc(pfull(c))}. The case team sees this on the case.</span></div>`;
   if (d.type === 'fnote') return shell('Add note', `${who}${inp('fntype', 'Type', { opts: ['Note', 'Phone log', 'Visit'], ph: false })}${inp('fntext', 'Note', { area: 1, h: 140, req: 1, err: e.text, phText: 'What happened and what the case team should know' })}`,
@@ -5790,14 +5793,173 @@ Object.assign(EXTRA, {
   fctab(t) { S.fctab = t.dataset.v; },
   fcnote(t) { S.drawer = { type: 'fnote', id: t.dataset.id }; },
   fcdoc(t) { S.drawer = { type: 'fdoc', id: t.dataset.id }; },
-  fcnotesave() { const text = val('fntext').trim(); if (!text) { S.drawer.err = { text: 'Write the note' }; return; } const c = byId(S.drawer.id);
+  fcnotesave() { const text = val('fntext').trim(); if (!text) { S.drawer.err = { text: 'Write the note' }; return; } const c = cById(S.drawer.id);
     caseNotes(c).unshift({ by: frmMe().name, type: val('fntype') || 'Note', when: `${fmt(TODAY)} ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`, text, team: 'FRM' }); S.drawer = null; toast('Note added to the case'); if (S.route === 'f-case') S.fctab = 'notes'; },
-  fcdocsave() { const d = S.drawer; if (!d.file) { d.err = { file: 'Choose a file to upload' }; return; } const c = byId(d.id);
+  fcdocsave() { const d = S.drawer; if (!d.file) { d.err = { file: 'Choose a file to upload' }; return; } const c = cById(d.id);
     caseDocs(c).unshift({ name: d.file, cat: val('fdcat') || 'Other', date: fmt(TODAY), by: frmMe().name, size: kb(d.size || 200000), desc: val('fddesc') }); S.drawer = null; toast('Document uploaded to the case'); if (S.route === 'f-case') S.fctab = 'docs'; },
   ftstage(t) { const st = casePF(), v = t.dataset.v, on = st.stage.has(v); st.stage.clear(); st.status.clear(); if (!on) st.stage.add(v); },
   ftstatus(t) { const st = casePF(), v = t.dataset.v, on = st.status.has(v); st.status.clear(); if (!on) st.status.add(v); },
   fcalert(t) { const st = casePF(); ['stage', 'status', 'alert', 'prod', 'cov', 'days', 'office', 'scan', 'cm'].forEach(k => st[k].clear()); if (t.dataset.v && t.dataset.v !== 'all') st.alert.add(t.dataset.v); S.route = 'f-cases'; },
   fcstage(t) { const st = casePF(); ['stage', 'status', 'alert'].forEach(k => st[k].clear()); const z = FSTAGES.find(q => q[0] === t.dataset.v); if (z && z[0] !== 'open') st.stage.add(z[1]); S.route = 'f-cases'; }
+});
+/* ================= V13: FRM case listing and filtering (client stories), scan administration in the Hub ================= */
+VERSIONS.unshift(['v13', 'V13', 'Review round 12', 'Scan administration on the Product tab: record Admin with the scan date, No admin or Unknown admin after calling the facility or patient. These feed the FRM Workspace status tiles.']);
+FRM_VERSIONS.unshift(['f2', 'V13', 'Review round 12', 'My cases is the landing page: status and stage tiles with counts and average business days, priority and extended filters, FRM dropdown with all 10 FRMs, GEHC case IDs, full patient details, aging highlight, saved views. No link to the Hub.']);
+FRM_VERSIONS.forEach(v => { if (v[0] === 'f1') v[1] = 'V12'; });
+const isV13 = () => vnum() >= 13;
+S.ver = VERSIONS[0][0]; try { const v = localStorage.getItem('hp-ver'); if (v && VERSIONS.some(x => x[0] === v)) S.ver = v; } catch (e) { }
+applyVersion();
+
+/* ---------- Case IDs in the client format ---------- */
+const GEHC = (id) => 'GEHC-' + String(id).replace(/\D/g, '').slice(-4);
+const idMatch = (c, q) => { const t = String(q).trim().toUpperCase().replace(/^GEHC-?/, ''); return !t || GEHC(c.id).slice(5).includes(t) || c.id.includes(t); };
+
+/* ---------- Level 1 FRMs (from the territory file) and FRM-only sample cases for their territories ---------- */
+const FRM10 = ZTT11.FRM.p.map(([area, name]) => ({ name, area: area.replace(/^FRM /, '') }));
+const FX_OFFICES = { 'New England': [['Harborview Cardiology', 'Boston, MA 02114', 'Back Bay Imaging']], 'Central': [['Prairie Heart Institute', 'Springfield, IL 62701', 'Lakeshore Molecular Imaging']], 'MidAtlantic': [['Chesapeake Neurology', 'Baltimore, MD 21201', 'Inner Harbor PET']], 'Florida': [['Gulf Coast Oncology', 'Tampa, FL 33606', 'Bayshore Imaging']], 'Southcentral': [['Hill Country Heart', 'Austin, TX 78701', 'Capital PET Center']], 'NorthCentral': [['Twin Cities Cardiology', 'Minneapolis, MN 55401', 'North Star Imaging']], 'Northwest': [['Cascade Neurology', 'Seattle, WA 98104', 'Puget Sound PET']] };
+(function seedFX() { let n = 0; const ST = ['BI', 'Pending PA Submission', 'Pending PA Outcome', 'Pending Appeal Submission', 'Active', 'Complete', 'Requested', 'Closed', 'Pending PAP', 'Active'];
+  const SUB = { BI: 'Case progressed', 'Pending PA Submission': 'Missing documentation', 'Pending PA Outcome': 'Waiting on payer', 'Pending Appeal Submission': 'Waiting on prescriber', Active: 'Coverage approved', Complete: 'Duplicate', Requested: 'Case progressed', Closed: 'Duplicate', 'Pending PAP': 'Waiting on patient' };
+  FRM10.forEach(f => { const off = FX_OFFICES[f.area]; if (!off) return; for (let k = 0; k < 6; k++) { const i = n++, h = (i * 2654435761 + 97) >>> 0, cs = ST[(i * 3 + k) % ST.length], [office, city, scan] = off[0];
+    FXC.push({ id: 'E' + (210700 + i * 7), fx: true, frm: f.name, area: f.area, pid: 'P0' + (20300 + i * 5), first: FIRST[(i * 7 + 3) % FIRST.length], last: LAST[(i * 11 + 5) % LAST.length], mi: 'ABCDEFGHJKLMNPRSTW'[i % 18],
+      dob: new Date(1946 + (i * 13) % 50, (i * 5) % 12, 1 + (i * 17) % 27), gender: h % 2 ? 'Female' : 'Male', prescriber: `Dr. ${FIRST[(h >> 6) % FIRST.length]} ${LAST[(h >> 7) % LAST.length]}`, facility: office, scanName: scan, officeCity: city,
+      payer: PAYERS[h % 5], caseStatus: cs, sub: SUB[cs], coverage: cs === 'Active' || cs === 'Complete' ? 'Approved' : cs.includes('Appeal') ? 'Denied' : 'Pending', ar: cs.includes('PA') || cs.includes('Appeal') ? 'Sent to Payer' : cs === 'Active' ? 'Active' : 'None',
+      owner: TEAM[h % TEAM.length], start: addDays(TODAY, -(30 + h % 200)), updated: addDays(TODAY, -(h % 12)), phone: `(${['617', '312', '410', '813', '512', '612', '206'][h % 7]}) 555-${String(1000 + h % 8999).slice(0, 4)}`,
+      street: `${100 + h % 8800} ${['Main Street', 'Lake Drive', 'Oak Avenue', 'Pine Road'][h % 4]}`, city, lang: 'English', best: 'Mornings', alt: `${FIRST[(h >> 8) % FIRST.length]} ${LAST[(h >> 4) % LAST.length]}`,
+      product: PRODS[(i * 3 + 1) % 4], sched: i % 3 ? fmt(addDays(TODAY, ((i * 9) % 40) - 20)) : undefined, seed12: 1 }); } }); })();
+
+/* ---------- FRM status model: status with stage, alerts, business days ---------- */
+const FST_OPEN = ['In process', 'Order'], FST1 = ['In process', 'Order', 'Admin', 'No admin', 'Unknown admin', 'Cancelled'];
+const FST2 = [['BI', 'Benefits investigation'], ['MI', 'Missing information'], ['PA', 'Prior authorization'], ['Appeal', 'Appeal'], ['On hold', 'On hold'], ['No value', 'No value']];
+function seedAdm(c) { if (c.adm || c.caseStatus !== 'Complete') return; const h = hashId(c.id + 'adm') % 5, o = h < 3 ? 'Admin' : h < 4 ? 'No admin' : 'Unknown admin';
+  c.adm = { outcome: o, date: o === 'Admin' ? (c.sched || fmt(addDays(c.updated || TODAY, -3))) : '', via: h % 2 ? 'Phone call to the facility' : 'Phone call to the patient', by: c.owner && c.owner !== 'Unassigned' ? c.owner : 'Janet Mills', when: fmt(c.updated || TODAY) }; }
+function fst(c) { seedAdm(c);
+  if (c.adm) return { status: c.adm.outcome, stage: '' };
+  if (c.caseStatus === 'Closed') return { status: 'Cancelled', stage: '' };
+  if (c.caseStatus === 'Active') return { status: 'Order', stage: '' };
+  const s = c.caseStatus, stage = c.sub === 'Missing documentation' ? 'MI' : s === 'BI' ? 'BI' : /Pending PA (Submission|Outcome)/.test(s) ? 'PA' : /Appeal/.test(s) ? 'Appeal' : s === 'Pending PAP' ? 'On hold' : 'No value';
+  return { status: 'In process', stage }; }
+const fstText = (x) => x.status === 'In process' ? `In process: ${x.stage}` : x.status;
+const scanOf = (c) => c.scanName || (imgOf(c) || {}).name || 'Not set';
+const frmOfCase = (c) => { if (c.fx) return { name: c.frm, area: c.area }; const a = frmOfAcct(c.facility) || frmOfAcct(scanOf(c)); const t = terr12(presZipCase(c), prodOf(c)); const name = a ? a.frm : t ? t.frm : 'Unassigned'; return { name, area: (FRM10.find(f => f.name === name) || {}).area || '' }; };
+function fx13(c) { if (!c.fx) seedImg12(c); const s = fst(c), h = hashId(String(c.id)), open = FST_OPEN.includes(s.status);
+  const alert = c.coverage === 'Denied' ? 'Denial' : s.stage === 'MI' ? 'Missing information' : c.sub === 'Waiting on payer' ? 'Payer delay' : c.sub === 'Waiting on prescriber' ? 'Signature needed' : (open && (c.ar === 'Active' || s.status === 'Order') && h % 4 === 0) ? 'PA expiring' : '';
+  return { c, ...s, open, alert, days: 1 + h % 18, frm: frmOfCase(c), scan: scanOf(c), office: c.facility, prod: prodOf(c) }; }
+const allCases13 = () => CASES.concat(FXC).map(fx13);
+
+/* ---------- Filters ---------- */
+const CF0 = () => ({ frm: 'me', caseId: '', alert: '', prod: '', sFrom: '', sTo: '', open: 'open', dob: '', name: '', payer: '', office: '', scan: '', status: '', stage: '' });
+let SVIEWS = [{ id: 'v1', name: 'My open cases', cf: CF0(), isDefault: true }, { id: 'v2', name: 'My open Flyrcado cases', cf: Object.assign(CF0(), { prod: 'Flyrcado' }) }, { id: 'v3', name: 'All FRMs, denials', cf: Object.assign(CF0(), { frm: 'all', alert: 'Denial' }) }];
+try { const v = JSON.parse(localStorage.getItem('hp-frmviews') || 'null'); if (Array.isArray(v) && v.length) SVIEWS = v; } catch (e) { }
+const saveViews = () => { try { localStorage.setItem('hp-frmviews', JSON.stringify(SVIEWS)); } catch (e) { } };
+const defView = () => SVIEWS.find(v => v.isDefault);
+if (!S.cf) { const d = defView(); S.cf = d ? Object.assign(CF0(), d.cf) : CF0(); S.cview = d ? d.id : ''; }
+const meName = () => frmMe().name;
+function cfMatch(x, cf, ignoreTiles) { const c = x.c;
+  if (cf.frm === 'me' ? x.frm.name !== meName() : cf.frm !== 'all' && x.frm.name !== cf.frm) return false;
+  if (cf.caseId && !idMatch(c, cf.caseId)) return false;
+  if (cf.alert === 'any' ? !x.alert : cf.alert && x.alert !== cf.alert) return false;
+  if (cf.prod && x.prod !== cf.prod) return false;
+  const sd = c.sched ? dOf(c.sched) : null; if (cf.sFrom && (!sd || sd < dOf(usOf(cf.sFrom)))) return false; if (cf.sTo && (!sd || sd > dOf(usOf(cf.sTo)))) return false;
+  if (cf.dob && fmt(c.dob) !== usOf(cf.dob)) return false;
+  if (cf.name && !`${c.first} ${c.last} ${c.last}, ${c.first}`.toLowerCase().includes(cf.name.toLowerCase().trim())) return false;
+  if (cf.payer && c.payer !== cf.payer) return false;
+  /* Dual attribution: a facility filter matches the ordering office or the scan facility */
+  if (cf.office && x.office !== cf.office && x.scan !== cf.office) return false;
+  if (cf.scan && x.scan !== cf.scan && x.office !== cf.scan) return false;
+  if (ignoreTiles) return true;
+  if (cf.open === 'open' && !x.open) return false; if (cf.open === 'closed' && x.open) return false;
+  if (cf.status && x.status !== cf.status) return false; if (cf.stage && x.stage !== cf.stage) return false;
+  return true; }
+
+/* ---------- Page ---------- */
+const sel13 = (id, label, opts, v, lab) => `<label class="ff"><span>${label}</span><select id="${id}" data-cf="${id.slice(3)}">${opts.map(o => { const [val, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}" ${v === val ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select></label>`;
+const in13 = (id, label, v, ph, type = 'text') => `<label class="ff"><span>${label}</span><input id="${id}" data-cf="${id.slice(3)}" type="${type}" value="${esc(v || '')}" ${ph ? `placeholder="${esc(ph)}"` : ''}></label>`;
+function filterDock13(all) { const cf = S.cf, n = Object.entries(cf).filter(([k, v]) => !['open', 'frm', 'status', 'stage'].includes(k) && v).length + (cf.frm !== 'me') + (cf.open !== 'open');
+  const offices = [...new Set(all.map(x => x.office))].sort(), scans = [...new Set(all.map(x => x.scan).filter(s => s !== 'Not set'))].sort();
+  const body = `<div class="fgroup ff13"><div class="ffh">Priority filters</div>
+      ${sel13('cf-frm', 'FRM', [['me', `${meName()} (me)`], ['all', 'All FRMs'], ...FRM10.filter(f => f.name !== meName()).map(f => [f.name, `${f.name} (${f.area})`])], cf.frm)}
+      ${in13('cf-caseId', 'Case ID', cf.caseId, 'GEHC-0000 or 0000')}
+      ${sel13('cf-alert', 'Case alert', [['', 'Any case alert'], ['any', 'Has an alert'], 'Missing information', 'Payer delay', 'Denial', 'PA expiring', 'Signature needed'], cf.alert)}
+      ${sel13('cf-prod', 'Drug group', [['', 'All drug groups'], ...PRODS], cf.prod)}
+      <div class="ff"><span>Scan date</span><div class="ff2">${`<input id="cf-sFrom" data-cf="sFrom" type="date" value="${cf.sFrom}" aria-label="Scan date from"><input id="cf-sTo" data-cf="sTo" type="date" value="${cf.sTo}" aria-label="Scan date to">`}</div></div>
+      <div class="ff"><span>Cases</span><div class="segradio ffseg" role="radiogroup">${[['open', 'Open'], ['closed', 'Closed'], ['', 'Both']].map(([v, l]) => `<label><input type="radio" name="cfopen" data-a="cfopen" data-v="${v}" ${cf.open === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div></div>
+      ${in13('cf-dob', 'Patient date of birth', cf.dob, '', 'date')}</div>
+    <div class="fgroup ff13"><button class="ffh ffx" data-a="cfmore" aria-expanded="${!!S.cfmore}">${ic(S.cfmore ? 'chevd' : 'chevr', 14)} More filters${['name', 'payer', 'office', 'scan'].some(k => cf[k]) ? ' <span class="n">•</span>' : ''}</button>
+      ${S.cfmore ? `${in13('cf-name', 'Patient name', cf.name, 'First or last name')}${sel13('cf-payer', 'Payer', [['', 'Any payer'], ...PAYERS.filter(p => p !== 'No insurance')], cf.payer)}${sel13('cf-office', 'Ordering office', [['', 'Any ordering office'], ...offices], cf.office)}${sel13('cf-scan', 'Scan facility', [['', 'Any scan facility'], ...scans], cf.scan)}` : ''}</div>`;
+  return `<aside class="dock ${S.fdockL ? '' : 'closed'}" aria-label="Filters"><div class="dock-head">${ic('filter', 16)}<h3>Filters ${n ? `<span class="pill nodot t-ok num" style="height:20px">${n}</span>` : ''}</h3>${n ? `<button class="link-btn x" data-a="cfclear">Clear</button>` : ''}<button class="iconbtn" data-a="fdockL" aria-label="${S.fdockL ? 'Collapse' : 'Expand'} filters">${ic(S.fdockL ? 'chevl' : 'chevr', 16)}</button><span class="vlabel">Filters${n ? ` (${n})` : ''}</span></div><div class="dock-body">${body}</div></aside>`; }
+function tiles13(base) { const cf = S.cf, avg = (L) => L.length ? Math.round(L.reduce((p, q) => p + q.days, 0) / L.length) : 0;
+  const t = (k, v, L, title, sm) => { const on = cf[k] === v; return `<button class="ftile ${sm ? 'sm' : ''} ${on ? 'on' : ''}" data-a="ft13" data-k="${k}" data-v="${esc(v)}" aria-pressed="${on}" ${title ? `title="${esc(title)}"` : ''}><b class="num">${L.length}</b><span>${esc(v)}</span><em>${L.length ? `avg ${avg(L)} business days` : '&nbsp;'}</em></button>`; };
+  return `<div class="ftiles">${FST1.map(s => t('status', s, base.filter(x => x.status === s))).join('')}</div>
+    <div class="ftiles t2b">${FST2.map(([s, l]) => t('stage', s, base.filter(x => x.status === 'In process' && x.stage === s), l, 1)).join('')}</div>
+    <p class="muted" style="font-size:12px;margin:0">Case count and average business days in the current status or stage (business hours 8 AM to 8 PM ET, Monday to Friday, excluding program holidays). Select a tile to filter the list, and select it again to clear. Counts follow your filters, but not the status, stage or open and closed selections.</p>`; }
+ROUTES_X['f-cases'] = () => { const cf = S.cf, all = allCases13(), base = all.filter(x => cfMatch(x, cf, true)), L = base.filter(x => cfMatch(x, cf, false)).sort((a, b) => (b.open - a.open) || (b.days - a.days));
+  const who = cf.frm === 'me' ? 'My cases' : cf.frm === 'all' ? 'All FRM cases' : `${cf.frm}'s cases`, fr = FRM10.find(f => f.name === cf.frm);
+  const sub = cf.frm === 'me' ? `All four products. Cases where your accounts are the ordering office or the scan facility, ${esc(frmMe().area)}.` : cf.frm === 'all' ? 'All four products, every FRM territory.' : `All four products, ${esc(fr ? fr.area : '')} territory.`;
+  const views = `<div class="vsel"><label for="cv13">Saved view</label><select id="cv13">${SVIEWS.map(v => `<option value="${v.id}" ${S.cview === v.id ? 'selected' : ''}>${esc(v.name)}${v.isDefault ? ' (default)' : ''}</option>`).join('')}<option value="" ${!S.cview ? 'selected' : ''}>Custom filters</option></select><button class="btn" data-a="drawer" data-v="fview">${ic('plus', 16)} Save view</button>${S.cview && !(SVIEWS.find(v => v.id === S.cview) || {}).isDefault ? `<button class="btn ghost" data-a="cvdefault">Make default</button>` : ''}</div>`;
+  const head = `<div class="pagehead"><div><h1>${esc(who)}</h1><div class="muted" style="font-size:13px">${sub}</div></div><span style="flex:1"></span>${views}</div>`;
+  const cols = [['Case ID', '104px', x => `<span class="mono">${GEHC(x.c.id)}</span>`], ['Patient', '150px', x => `<b>${esc(x.c.last)}, ${esc(x.c.first)}</b>`], ['DOB', '92px', x => `<span class="num">${fmt(x.c.dob)}</span>`], ['Drug group', '92px', x => esc(x.prod)],
+    ['Status', '140px', x => `<span class="fst ${x.open ? 'o' : 'c'} ${x.status === 'Order' ? 'ord' : x.status === 'Admin' ? 'adm' : ''}">${esc(x.status)}</span>${x.stage ? `<span class="sub">${esc(x.stage)}</span>` : ''}`], ['Case alert', '140px', x => x.alert ? pill(x.alert) : '<span class="muted">None</span>'],
+    ['Scan date', '92px', x => x.c.sched ? `<span class="num">${esc(x.c.sched)}</span>` : '<span class="muted">Not set</span>'], ['Ordering office', 'auto', x => esc(x.office)], ['Scan facility', 'auto', x => esc(x.scan)],
+    ['Business days', '86px', x => `<span class="num ${x.open && x.days > 10 ? 'aging' : ''}" ${x.open && x.days > 10 ? 'title="More than 10 business days in this status"' : ''}>${x.days}</span>`, 'r']];
+  if (cf.frm !== 'me') cols.splice(9, 0, ['FRM', '130px', x => esc(x.frm.name) + (x.frm.name === meName() ? ' <span class="muted">(me)</span>' : '')]);
+  const empty = `<div class="fempty">${ic('search', 28)}<b>No cases match these filters</b><span>Try a different case ID or date range, or clear the filters to start over.</span><button class="btn primary" data-a="cfclear">Clear filters</button></div>`;
+  const chips = [['caseId', 'Case ID'], ['alert', 'Alert'], ['prod', 'Drug group'], ['sFrom', 'Scan from'], ['sTo', 'Scan to'], ['dob', 'DOB'], ['name', 'Patient'], ['payer', 'Payer'], ['office', 'Ordering office'], ['scan', 'Scan facility'], ['status', 'Status'], ['stage', 'Stage']].filter(([k]) => cf[k]).map(([k, l]) => `<span class="chip"><span style="opacity:.7">${l}:</span> ${esc(k === 'alert' && cf[k] === 'any' ? 'Has an alert' : ['sFrom', 'sTo', 'dob'].includes(k) ? usOf(cf[k]) : cf[k])}<button data-a="cfchip" data-k="${k}" aria-label="Remove">${ic('x', 12)}</button></span>`);
+  const body = `<section class="card"><div class="card-b" style="display:flex;flex-direction:column;gap:10px">${tiles13(base)}</div></section>
+    ${chips.length ? `<div class="chips">${chips.join('')}<button class="link-btn" data-a="cfclear">Clear all</button></div>` : ''}
+    <section class="card"><div class="card-h"><h2>${L.length} case${L.length === 1 ? '' : 's'}</h2><span class="muted" style="font-size:12.5px">Open cases first, then longest in status. Days over 10 are highlighted.</span><span style="flex:1"></span><button class="btn sm" data-a="fexport">${ic('download', 14)} Export</button></div>
+    ${L.length ? dtable(cols, L, { rowAct: x => `data-a="fopencase" data-id="${x.c.id}"` }) : empty}</section>`;
+  return fWork(filterDock13(all), head + body); };
+
+/* Filter inputs: selects and dates apply on change; text fields as you type */
+const cfSet = (k, v) => { S.cf[k] = v; S.cview = ''; };
+document.addEventListener('change', (e) => { const t = e.target; if (!isFRM()) return;
+  if (t.dataset && t.dataset.cf && t.tagName === 'SELECT' || (t.dataset && t.dataset.cf && t.type === 'date')) { cfSet(t.dataset.cf, t.value); render(); }
+  if (t.id === 'cv13') { const v = SVIEWS.find(x => x.id === t.value); if (v) { S.cf = Object.assign(CF0(), v.cf); S.cview = v.id; } else S.cview = ''; render(); } });
+document.addEventListener('input', (e) => { const t = e.target; if (!isFRM() || !t.dataset || !t.dataset.cf || t.tagName !== 'INPUT' || t.type === 'date') return;
+  cfSet(t.dataset.cf, t.value); const id = t.id, pos = t.selectionStart; render(); const n = document.getElementById(id); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (x) { } } });
+Object.assign(EXTRA, {
+  cfopen(t) { cfSet('open', t.dataset.v); },
+  cfmore() { S.cfmore = !S.cfmore; },
+  cfclear() { S.cf = Object.assign(CF0(), { frm: S.cf.frm }); S.cview = ''; },
+  cfchip(t) { cfSet(t.dataset.k, ''); },
+  ft13(t) { const k = t.dataset.k, v = t.dataset.v, cf = S.cf; S.cview = '';
+    if (k === 'status') { if (cf.status === v) { cf.status = ''; } else { cf.status = v; cf.stage = ''; if (cf.open === 'open' && !FST_OPEN.includes(v)) cf.open = ''; if (cf.open === 'closed' && FST_OPEN.includes(v)) cf.open = ''; } }
+    else { if (cf.stage === v) { cf.stage = ''; } else { cf.stage = v; cf.status = 'In process'; if (cf.open === 'closed') cf.open = ''; } } },
+  cvdefault() { SVIEWS.forEach(v => { v.isDefault = v.id === S.cview; }); saveViews(); toast('Default view updated'); },
+  fviewsave() { const name = val('fvname').trim(); if (!name) { S.drawer.err = { name: 'Name the view' }; return; } const id = 'v' + Date.now(), def = document.getElementById('fvdef') && document.getElementById('fvdef').checked;
+    if (def) SVIEWS.forEach(v => { v.isDefault = false; }); SVIEWS.push({ id, name, cf: Object.assign({}, S.cf), isDefault: !!def }); S.cview = id; saveViews(); S.drawer = null; toast(`View saved: ${name}`); },
+  fcalert(t) { S.cf = Object.assign(CF0(), { frm: S.cf.frm, open: '', alert: t.dataset.v && t.dataset.v !== 'all' ? t.dataset.v : '' }); S.cview = ''; S.route = 'f-cases'; },
+  fcstage(t) { S.cf = Object.assign(CF0(), { frm: S.cf.frm }); S.cview = ''; S.route = 'f-cases'; }
+});
+{ const _d = drawer; drawer = function () { const d = S.drawer; if (!isFRM() || !d || d.type !== 'fview') return _d(); const e = d.err || {}, enter = LAST_DRAWER !== d.type && !LAST_DRAWER, cf = S.cf;
+  const sum = [cf.frm === 'me' ? 'My cases' : cf.frm === 'all' ? 'All FRMs' : cf.frm, cf.open === 'open' ? 'Open' : cf.open === 'closed' ? 'Closed' : 'Open and closed', cf.prod, cf.alert && (cf.alert === 'any' ? 'Has an alert' : cf.alert), cf.status, cf.stage, cf.caseId && 'Case ' + cf.caseId, cf.payer, cf.office, cf.scan].filter(Boolean).join(' · ');
+  return `<div class="drawer-scrim ${enter ? 'enter' : ''}" data-a="drawerclose"></div><aside class="drawer ${enter ? 'enter' : ''}" role="dialog" aria-label="Save view"><div class="drawer-h"><h2>Save view</h2><button class="iconbtn" data-a="drawerclose" aria-label="Close">${ic('x', 18)}</button></div>
+    <div class="drawer-b"><div class="note-banner">${ic('info', 16)}<span>Saves the current filters and tile selection: ${esc(sum)}.</span></div>${inp('fvname', 'View name', { req: 1, err: e.name, phText: 'For example, My open Flyrcado cases' })}${chk('fvdef', 'Open My cases with this view', false)}</div>
+    <div class="drawer-f"><button class="btn" data-a="drawerclose">Cancel</button><span style="flex:1"></span><button class="btn primary" data-a="fviewsave">Save view</button></div></aside>`; }; }
+
+/* ---------- GEHC case IDs everywhere in the FRM Workspace (display text only) ---------- */
+{ const _r = render; render = function () { const out = _r.apply(this, arguments); if (isFRM()) { const root = document.getElementById('root'); if (root) { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; const re = /\bE(1|2)\d{5}\b/g; while ((n = w.nextNode())) if (re.test(n.nodeValue)) { re.lastIndex = 0; n.nodeValue = n.nodeValue.replace(re, (m) => GEHC(m)); } } } return out; }; }
+
+/* ---------- Case view additions: FRM status with stage, scan administration ---------- */
+{ const _cv = ROUTES_X['f-case']; ROUTES_X['f-case'] = () => { const c = cById(S.fcaseId); let h = _cv(); if (!c) return h; const x = fx13(c), a = c.adm;
+  h = h.replace('<div><span class="lbl">Case status</span>', `<div><span class="lbl">FRM status</span><b>${esc(fstText(x))}</b></div><div><span class="lbl">Case status</span>`);
+  h = h.replace('fch-strip"', 'fch-strip six"');
+  const adm = `<section class="card fccard"><div class="card-h"><h3>${ic('check', 16)} Scan administration</h3></div><div class="card-b"><div class="fields">${kv('Outcome', a ? `<b>${esc(a.outcome)}</b>` : '<span class="muted">Not recorded yet</span>')}${a && a.outcome === 'Admin' ? kv('Scan date', `<span class="num">${esc(a.date)}</span>`) : ''}${a ? kv('Confirmed by', `${esc(a.via)}`) + kv('Recorded', `${esc(a.by)}, ${esc(a.when)}`) : ''}</div>
+    <div class="note-banner" style="margin-top:10px">${ic('info', 16)}<span>Case managers record this in the Hub after calling the facility or patient. Whether FRMs can record it too is waiting on confirmation.</span></div></div></section>`;
+  return h.replace('<div class="fcgrid">', `<div class="fcgrid">${adm}`); }; }
+
+/* ---------- Hub V13: record scan administration on the Product tab ---------- */
+{ const _tr = tabRx; tabRx = function (c) { let h = _tr(c); if (!isV13() || !isImg12()) return h; seedAdm(c); const a = c.adm;
+  const block = `<div class="block" data-sec="Scan administration"><div class="section-t">${ic('check', 15)}Scan administration<span class="sp"></span><button class="btn sm ghost" data-a="modal" data-v="adm13">${ic('edit', 14)} ${a ? 'Change' : 'Record'}</button></div><div class="fields">${kv('Outcome', a ? `<b>${esc(a.outcome)}</b>` : '<span class="muted">Not recorded yet</span>')}${a && a.outcome === 'Admin' ? kv('Scan date', `<span class="num">${esc(a.date)}</span>`) : ''}${a ? kv('Confirmed by', esc(a.via)) + kv('Recorded', `${esc(a.by)}, ${esc(a.when)}`) : ''}</div><p class="muted" style="font-size:12.5px;margin:6px 0 0">After the scheduled imaging date, call the facility or patient to confirm whether the scan was given. The outcome shows in the FRM Workspace.</p></div>`;
+  const i = h.indexOf('data-sec="Claims check"'); if (i < 0) return h + block; const j = h.lastIndexOf('<div class="block', i); return h.slice(0, j) + block + h.slice(j); }; }
+{ const _xm = extraModal; extraModal = function (m, wrap) { if (m.type !== 'adm13') return _xm(m, wrap); const c = byId(S.caseId), a = c.adm || {}, e = m.err || {}, o = m.o || a.outcome || 'Admin';
+  return wrap('Scan administration', `<div class="radio-cards">${[['Admin', 'Scan was given', 'Record the scan date'], ['No admin', 'Scan was not given', 'For example, the patient cancelled'], ['Unknown admin', 'Could not confirm', 'No answer from the facility or patient']].map(([v, l, d]) => `<label><input type="radio" name="adm13o" data-a="adm13o" data-v="${v}" ${o === v ? 'checked' : ''}><span><b>${v}</b> · ${l}<span class="sub">${d}</span></span></label>`).join('')}</div>
+    ${o === 'Admin' ? inp('adm13d', 'Scan date', { type: 'date', req: 1, err: e.date, v: a.date ? isoOf(a.date) : c.sched ? isoOf(c.sched) : '' }) : ''}${inp('adm13v', 'Confirmed by', { opts: ['Phone call to the facility', 'Phone call to the patient', 'Other'], ph: false, v: a.via })}`,
+    `<button class="btn" data-a="mclose">Cancel</button><button class="btn primary" data-a="adm13save">Save</button>`); }; }
+Object.assign(EXTRA, {
+  adm13o(t) { S.modal.o = t.dataset.v; },
+  adm13save() { const c = byId(S.caseId), o = S.modal.o || (c.adm || {}).outcome || 'Admin', d = val('adm13d'); if (o === 'Admin' && !d) { S.modal.err = { date: 'Choose the scan date' }; return; }
+    c.adm = { outcome: o, date: o === 'Admin' ? usOf(d) : '', via: val('adm13v') || 'Phone call to the facility', by: ME, when: fmt(TODAY) }; auditLog('Product', 'Scan administration recorded', o); S.modal = null; toast(`Scan administration saved: ${o}`); }
 });
 /* Runs after every version is registered: a saved version pick only sticks until a newer version ships */
 verSticky(); applyApp();
