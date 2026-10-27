@@ -5811,7 +5811,7 @@ S.ver = VERSIONS[0][0]; try { const v = localStorage.getItem('hp-ver'); if (v &&
 applyVersion();
 
 /* ---------- Case IDs in the client format ---------- */
-const GEHC = (id) => 'GEHC-' + String(id).replace(/\D/g, '').slice(-4);
+const GEHC = (id) => 'GEHC-' + String(id).replace(/\D/g, '').slice(-7);
 const idMatch = (c, q) => { const t = String(q).trim().toUpperCase().replace(/^GEHC-?/, ''); return !t || GEHC(c.id).slice(5).includes(t) || c.id.includes(t); };
 
 /* ---------- Level 1 FRMs (from the territory file) and FRM-only sample cases for their territories ---------- */
@@ -5898,10 +5898,10 @@ ROUTES_X['f-cases'] = () => { const cf = S.cf, all = allCases13(), base = all.fi
   const views = `<div class="vsel"><label for="cv13">Saved view</label><select id="cv13">${SVIEWS.map(v => `<option value="${v.id}" ${S.cview === v.id ? 'selected' : ''}>${esc(v.name)}${v.isDefault ? ' (default)' : ''}</option>`).join('')}<option value="" ${!S.cview ? 'selected' : ''}>Custom filters</option></select><button class="btn" data-a="drawer" data-v="fview">${ic('plus', 16)} Save view</button>${S.cview && !(SVIEWS.find(v => v.id === S.cview) || {}).isDefault ? `<button class="btn ghost" data-a="cvdefault">Make default</button>` : ''}</div>`;
   const head = `<div class="pagehead"><div><h1>${esc(who)}</h1><div class="muted" style="font-size:13px">${sub}</div></div><span style="flex:1"></span>${views}</div>`;
   const cols = [['Case ID', '104px', x => `<span class="mono">${GEHC(x.c.id)}</span>`], ['Patient', '150px', x => `<b>${esc(x.c.last)}, ${esc(x.c.first)}</b>`], ['DOB', '92px', x => `<span class="num">${fmt(x.c.dob)}</span>`], ['Drug group', '92px', x => esc(x.prod)],
-    ['Status', '140px', x => `<span class="fst ${x.open ? 'o' : 'c'} ${x.status === 'Order' ? 'ord' : x.status === 'Admin' ? 'adm' : ''}">${esc(x.status)}</span>${x.stage ? `<span class="sub">${esc(x.stage)}</span>` : ''}`], ['Case alert', '140px', x => x.alert ? pill(x.alert) : '<span class="muted">None</span>'],
+    ['Status', '140px', x => `<span class="fst ${x.open ? 'o' : 'c'} ${x.status === 'Order' ? 'ord' : x.status === 'Admin' ? 'adm' : ''}">${esc(x.status)}</span>${x.stage ? `<span class="sub">${esc(x.stage)}</span>` : ''}`], ['Case alert', '140px', x => x.alert ? pill(x.alert) : '<span class="muted">None</span>'], ['Primary carrier', '150px', x => esc(carrierOf(x.c))],
     ['Scan date', '92px', x => x.c.sched ? `<span class="num">${esc(x.c.sched)}</span>` : '<span class="muted">Not set</span>'], ['Ordering office', 'auto', x => esc(x.office)], ['Scan facility', 'auto', x => esc(x.scan)],
     ['Business days', '86px', x => `<span class="num ${x.open && x.days > 10 ? 'aging' : ''}" ${x.open && x.days > 10 ? 'title="More than 10 business days in this status"' : ''}>${x.days}</span>`, 'r']];
-  if (cf.frm !== 'me') cols.splice(9, 0, ['FRM', '130px', x => esc(x.frm.name) + (x.frm.name === meName() ? ' <span class="muted">(me)</span>' : '')]);
+  if (cf.frm !== 'me') cols.splice(10, 0, ['FRM', '130px', x => esc(x.frm.name) + (x.frm.name === meName() ? ' <span class="muted">(me)</span>' : '')]);
   const empty = `<div class="fempty">${ic('search', 28)}<b>No cases match these filters</b><span>Try a different case ID or date range, or clear the filters to start over.</span><button class="btn primary" data-a="cfclear">Clear filters</button></div>`;
   const chips = [['caseId', 'Case ID'], ['alert', 'Alert'], ['prod', 'Drug group'], ['sFrom', 'Scan from'], ['sTo', 'Scan to'], ['dob', 'DOB'], ['name', 'Patient'], ['payer', 'Payer'], ['office', 'Ordering office'], ['scan', 'Scan facility'], ['status', 'Status'], ['stage', 'Stage']].filter(([k]) => cf[k]).map(([k, l]) => `<span class="chip"><span style="opacity:.7">${l}:</span> ${esc(k === 'alert' && cf[k] === 'any' ? 'Has an alert' : ['sFrom', 'sTo', 'dob'].includes(k) ? usOf(cf[k]) : cf[k])}<button data-a="cfchip" data-k="${k}" aria-label="Remove">${ic('x', 12)}</button></span>`);
   const body = `<section class="card"><div class="card-b" style="display:flex;flex-direction:column;gap:10px">${tiles13(base)}</div></section>
@@ -6226,4 +6226,202 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.dataset.a === 'gosearch') { S.q = e.target.value; Object.values(S.f).forEach(s => s.clear()); go('cases'); }
   if (e.key === 'Enter' && (e.target.classList.contains('wi') || e.target.classList.contains('qitem'))) openCase(e.target.dataset.id);
 });
+
+/* ================= FRM V14: Jira stories EMAXPAC-715, 716, 739, 740-743, case detail, documents ================= */
+FRM_VERSIONS.unshift(['f3', 'V14', 'Review round 13', 'Case listing adds Primary carrier. Case detail with journey tracker, alert banner, all case and patient details and scan administration logging. Notes (read only), Messages, Documents (upload, download), Fax documents, Download PDF. New case email to the FRM with a direct link to the case.']);
+
+/* ---------- Listing: Primary carrier column (EMAXPAC-715) ---------- */
+function carrierOf(c) { const M = { 'Medicare Part D': 'Medicare Part B', 'Crestline PBM': 'Crestline Health Plan' }; return !c.payer || c.payer === 'No insurance' ? 'No insurance' : M[c.payer] || c.payer; }
+
+/* ---------- Sample notes, messages and documents for the imaging program ---------- */
+const N14 = {}, M14 = {}, D14 = {}, FX14 = {}, FILES14 = {};
+const roleOf = (n) => n === 'System' ? 'System' : FRM10.some(f => f.name === n) ? 'FRM' : 'Hub case manager';
+const stamp14 = (d, h, m) => `${fmt(d)} ${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+const nowStamp14 = () => { const n = new Date(); return stamp14(TODAY, n.getHours(), n.getMinutes()); };
+function notes14(c) { if (N14[c.id]) return N14[c.id]; const h = hashId(c.id + 'n14'), cm = c.owner && c.owner !== 'Unassigned' ? c.owner : 'Janet Mills', st = c.start || addDays(TODAY, -40), x = fx13(c);
+  const L = [[0, 9, 12, cm, `Referral form received from ${c.facility}. Prescriber attestation and signature on file. Case created.`],
+    [2, 10, 40, cm, `Benefits investigation started with ${carrierOf(c)}. Called the payer, reference #${String(h).slice(0, 8)}.`],
+    [5, 14, 5, cm, `Benefits investigation complete. ${prodOf(c)} requires prior authorization for this plan.`]];
+  if (x.stage === 'MI' || h % 3 === 0) L.push([7, 11, 20, cm, `Missing information: clinical notes from the last visit. Faxed a request to ${c.facility}.`]);
+  if (/PA|Appeal/.test(x.stage) || x.status !== 'In process') L.push([9, 15, 32, cm, `Prior authorization submitted to ${carrierOf(c)} with the signed referral form and clinical notes.`]);
+  if (x.stage === 'Appeal') L.push([16, 10, 2, cm, `PA denied. Starting the appeal with a letter of medical necessity.`]);
+  if (h % 5 === 1) L.length = 0;
+  return (N14[c.id] = L.map(([d, hh, mm, by, text]) => ({ by, role: roleOf(by), when: stamp14(addDays(st, d), hh, mm), text }))); }
+function msgs14(c) { if (M14[c.id]) return M14[c.id]; const h = hashId(c.id + 'm14'), cm = c.owner && c.owner !== 'Unassigned' ? c.owner : 'Janet Mills', fr = fx13(c).frm.name;
+  return (M14[c.id] = h % 2 ? [{ by: fr, role: 'FRM', when: stamp14(addDays(TODAY, -6), 9, 15), text: `Visited ${c.facility} today. The office will send the updated clinical notes this week.` }, { by: cm, role: 'Hub case manager', when: stamp14(addDays(TODAY, -5), 13, 48), text: 'Thanks. I will add them to the PA as soon as they arrive.' }] : []); }
+const DCATS14 = ['Patient authorization', 'Referral form', 'Prior authorization', 'Payer letter', 'Clinical notes', 'Insurance card', 'Appeal', 'Other'];
+const extOf = (n) => (String(n).match(/\.([a-z0-9]+)$/i) || ['', ''])[1].toUpperCase();
+function docs14(c) { if (D14[c.id]) return D14[c.id]; const h = hashId(c.id + 'd14'), cm = c.owner && c.owner !== 'Unassigned' ? c.owner : 'Janet Mills', st = c.start || addDays(TODAY, -40), p = (carrierOf(c).split(' ')[0] || 'Payer');
+  const L = [['Referral_form_signed.pdf', 'Referral form', 0, 'System (fax)', '412 KB'], ['Insurance_card_front_back.jpg', 'Insurance card', 0, cm, '820 KB'], [`PA_request_${p}.pdf`, 'Prior authorization', 9, cm, '1.1 MB'], ['Clinical_notes_last_visit.pdf', 'Clinical notes', 8, cm, '640 KB']];
+  if (fx13(c).stage === 'Appeal') L.push([`Denial_letter_${p}.pdf`, 'Payer letter', 15, 'System (fax)', '210 KB'], ['Appeal_letter_of_medical_necessity.docx', 'Appeal', 16, cm, '96 KB']);
+  if (h % 6 === 2) L.length = 0;
+  return (D14[c.id] = L.map(([name, cat, d, by, size]) => ({ name, cat, date: fmt(addDays(st, d)), by: by === 'System (fax)' ? 'Inbound fax' : by, role: by === 'System (fax)' ? 'System' : 'Hub case manager', size }))); }
+const faxes14 = (c) => FX14[c.id] || (FX14[c.id] = []);
+
+/* ---------- Journey: Referral, Intake, BI, Insurance authorization, Order, Administered ---------- */
+const J14 = ['Referral', 'Intake', 'Benefits investigation', 'Insurance authorization', 'Order', 'Administered'];
+function jIdx14(x) { if (x.status === 'Cancelled') return -1; if (x.status === 'Admin') return 6; if (['Order', 'No admin', 'Unknown admin'].includes(x.status)) return 4;
+  return { BI: 2, MI: 1, PA: 3, Appeal: 3, 'On hold': 2, 'No value': 1 }[x.stage] ?? 1; }
+function journey14(x) { const j = jIdx14(x), can = j < 0;
+  return `<ol class="jr14 ${can ? 'can' : ''}" aria-label="Patient journey">${J14.map((l, i) => { const st = can ? 'todo' : i < j ? 'done' : i === j ? 'on' : 'todo';
+    return `<li class="${st}"><span class="jr-dot">${st === 'done' ? ic('check', 13) : i + 1}</span><span class="jr-l">${l}</span>${st === 'on' ? '<span class="jr-now">Current</span>' : ''}</li>`; }).join('')}</ol>
+    ${can ? `<div class="jr-can">${ic('x', 14)} Case cancelled. The journey stopped before the scan.</div>` : j === 6 ? `<div class="jr-done">${ic('check', 14)} Scan administered${x.c.adm && x.c.adm.date ? ' on ' + esc(x.c.adm.date) : ''}.</div>` : ''}`; }
+
+/* ---------- Fax numbers for the case's offices ---------- */
+const faxFor = (name, salt) => { const f = FACILITIES.find(x => x.name === name), im = IMAGING10.find(x => x.name === name); if (f && f.fax) return f.fax; if (im && im.fax) return im.fax; const h = hashId(name + salt); return `(${['617', '312', '410', '813', '512', '612', '206'][h % 7]}) 555-${String(1000 + h % 8999)}`; };
+const digits10 = (s) => String(s || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+
+/* ---------- Case detail (in-portal, no link to the Hub) ---------- */
+ROUTES_X['f-case'] = () => { const c = cById(S.fcaseId); if (!c) return '<div class="page"><div class="emptyline">Case not found.</div></div>';
+  const x = fx13(c), id = GEHC(c.id), tab = S.fctab || 'details', N = notes14(c), M = msgs14(c), D = docs14(c), FX = faxes14(c), a = c.adm, F = FORM12[prodOf(c)] || {}, t = terr12(presZipCase(c), prodOf(c)) || {};
+  const fac = FACILITIES.find(f => f.name === c.facility) || {}, loc = (fac.locs || [])[0] || {}, im = IMAGING10.find(f => f.name === x.scan) || {}, aging = x.open && x.days > 10;
+  const icd = F.icd && F.icd.length ? F.icd[(hashId(c.id) >> 1) % F.icd.length] : null, cpt = F.cpt && F.cpt.length ? F.cpt[(hashId(c.id) >> 3) % F.cpt.length] : null;
+  const card = (title, icon, rows, extra = '') => `<section class="card fccard"><div class="card-h"><h3>${ic(icon, 16)} ${title}</h3>${extra}</div><div class="card-b"><div class="fields">${rows}</div></div></section>`;
+  const daysTx = `<span class="num ${aging ? 'aging' : ''}">${x.days}</span> business days`;
+  const alert = x.alert ? `<div class="falert ${x.alert === 'Denial' ? 'bad' : ''}">${ic('alert', 18)}<div><b>Case alert: ${esc(x.alert)}</b><span>${x.days} business days in the current status${aging ? ', more than 10' : ''}.</span></div></div>` : '';
+  const head = `<section class="card fchead"><div class="fch-top"><span class="avatar" style="width:52px;height:52px;font-size:17px;background:var(--green-50);color:var(--green-700)">${(c.first[0] + c.last[0]).toUpperCase()}</span>
+    <div class="fch-id"><h1>${esc(c.first)} ${esc(c.last)}</h1><div class="muted">DOB ${fmt(c.dob)} · <span class="mono">${id}</span> · ${esc(prodOf(c))}</div></div><span style="flex:1"></span>
+    <div class="fch-acts"><button class="btn" data-a="fadm14" data-id="${c.id}">${ic('check', 16)} Log scan status</button><button class="btn" data-a="ffax14" data-id="${c.id}">${ic('fax', 16)} Fax documents</button><button class="btn primary" data-a="fpdf14" data-id="${c.id}">${ic('download', 16)} Download PDF</button></div></div>
+    <div class="fch-strip s14"><div><span class="lbl">Status</span><b>${esc(x.status)}</b>${x.stage ? `<span class="sub">Stage: ${esc(x.stage)}</span>` : ''}</div><div><span class="lbl">In this status</span><b>${daysTx}</b></div><div><span class="lbl">Primary medical payer</span><b>${esc(carrierOf(c))}</b></div><div><span class="lbl">Case created</span><b class="num">${fmt(c.start)}</b></div><div><span class="lbl">Supporting FRM</span><b>${esc(x.frm.name)}</b><span class="sub">${esc(x.frm.area ? x.frm.area + ' territory' : 'No territory')}</span></div></div>
+    <div class="jr14wrap">${journey14(x)}</div></section>`;
+  const details = `<div class="fcgrid">
+    ${card('Patient', 'users', fld('Name', `${c.first} ${c.mi ? c.mi + '. ' : ''}${c.last}`) + fld('Date of birth', fmt(c.dob)) + fld('Patient ID', c.pid) + fld('Gender', c.gender, false) + fld('Phone', c.phone) + fld('Address', `${c.street}, ${c.city}`) + fld('Preferred language', c.lang, false))}
+    ${card('Clinical and payer', 'shield', fld('Drug group', prodOf(c), false) + fld('Primary medical payer', carrierOf(c), false) + kv('Coverage', pill(c.coverage)) + kv('Status with stage', `<b>${esc(fstText(x))}</b>`) + kv('Case alert', x.alert ? pill(x.alert) : '<span class="muted">None</span>') + fld('Diagnosis (ICD-10)', icd ? `${icd[0]} ${icd[1]}` : '') + fld('Procedure (CPT)', cpt ? `${cpt[0]} ${cpt[1]}` : ''))}
+    ${card('Provider and facility', 'building', fld('Ordering office', c.facility, false) + fld('Prescriber', c.prescriber, false) + fld('Office fax', faxFor(c.facility, 'o')) + fld('Scan facility', x.scan, false) + fld('Scan facility fax', faxFor(x.scan, 's')) + fld('Scheduled scan date', c.sched || 'Not scheduled', false))}
+    ${card('Dates and care team', 'cal', fld('Case created', fmt(c.start), false) + kv('Business days in status', daysTx) + fld('Supporting FRM', x.frm.name, false) + fld('Territory', x.frm.area || 'Unassigned', false) + fld('Case manager', c.owner || 'Unassigned', false) + fld('Sales account manager', t.sam || 'Unassigned', false))}
+    ${card('Scan administration', 'check', kv('Outcome', a ? `<b>${esc(a.outcome)}</b>` : '<span class="muted">Not recorded yet</span>') + (a && a.outcome === 'Admin' ? kv('Scan date', `<span class="num">${esc(a.date)}</span>`) : '') + (a ? kv('Recorded by', `${esc(a.by)}, ${esc(a.when)}`) : ''), `<button class="btn sm" data-a="fadm14" data-id="${c.id}">${ic('edit', 14)} ${a ? 'Change' : 'Log status'}</button>`)}</div>`;
+  const notesTab = `<section class="card"><div class="card-h"><h2>Notes <span class="count">${N.length}</span></h2><span class="muted" style="font-size:12.5px">Oldest first. Written by the case team in the Hub.</span></div>
+    ${N.length ? `<div class="fcnotes">${N.map(n => `<div class="fcnote"><div class="fcn-h"><b>${esc(n.by)}</b><span class="frtag">${esc(n.role)}</span><span class="muted num">${esc(n.when)}</span></div><p>${esc(n.text)}</p></div>`).join('')}</div>` : `<div class="fempty sm">${ic('file', 26)}<b>No notes yet</b><span>The case team has not added notes to this case.</span></div>`}
+    <div class="card-f"><span class="muted">To share an update with the case team, </span><button class="link-btn" data-a="fctab" data-v="msgs">send a message</button>.</div></section>`;
+  const e = S.fmsgErr;
+  const msgsTab = `<section class="card"><div class="card-h"><h2>Messages <span class="count">${M.length}</span></h2><span class="muted" style="font-size:12.5px">Between FRMs and the case team. Messages cannot be edited or deleted.</span></div>
+    ${M.length ? `<div class="fcnotes">${M.map(n => `<div class="fcnote ${n.role === 'FRM' ? 'frm' : ''}"><div class="fcn-h"><b>${esc(n.by)}</b><span class="frtag">${esc(n.role)}</span><span class="muted num">${esc(n.when)}</span></div><p>${esc(n.text)}</p></div>`).join('')}</div>` : `<div class="fempty sm">${ic('chat', 26)}<b>No messages yet</b><span>Start the conversation with the case team below.</span></div>`}
+    <div class="fcompose ${e ? 'err' : ''}"><label for="fmsg14" class="lbl">New message to the case team</label><textarea id="fmsg14" rows="3" placeholder="For example, the office confirmed the scan for Tuesday">${esc(S.fmsgDraft || '')}</textarea>${e ? `<span class="errmsg">${ic('alert', 13)} ${e}</span>` : ''}<div class="fcompose-f"><span class="muted" style="font-size:12px">Shows on the case in the Hub right away.</span><button class="btn primary" data-a="fmsgsend" data-id="${c.id}">${ic('send', 16)} Send message</button></div></div></section>`;
+  const U = S.fup || {}, ue = U.err || {};
+  const docsTab = `<section class="card"><div class="card-h"><h2>Documents <span class="count">${D.length}</span></h2><button class="btn" data-a="ffax14" data-id="${c.id}" ${D.length ? '' : 'disabled'}>${ic('fax', 16)} Fax documents</button></div>
+    <div class="fupl"><label class="fdz14 ${U.drag ? 'drag' : ''} ${ue.file ? 'err' : ''}">${ic('upload', 22)}<span>${U.name ? `<b>${esc(U.name)}</b> <span class="muted">${kb14(U.size)}</span>` : '<b>Drop a file here or choose a file</b>'}<span class="muted">PDF, TIFF, PNG, JPG, DOC or DOCX, up to 25 MB</span></span><input type="file" id="fup14" accept=".pdf,.tif,.tiff,.png,.jpg,.jpeg,.doc,.docx" hidden></label>
+      <div class="fupl-f"><label class="ff14 ${ue.cat ? 'err' : ''}"><span>Category <span class="req">*</span></span><select id="fupcat">${['<option value="">Choose a category</option>', ...DCATS14.map(k => `<option ${U.cat === k ? 'selected' : ''}>${k}</option>`)].join('')}</select></label><button class="btn primary" data-a="fupsave" data-id="${c.id}">${ic('upload', 16)} Upload</button></div>
+      ${ue.file || ue.cat ? `<span class="errmsg">${ic('alert', 13)} ${esc(ue.file || ue.cat)}</span>` : ''}</div>
+    ${D.length ? dtable([['Document', 'auto', d => `<span class="doccell">${ic('file', 16)}<span><b>${esc(d.name)}</b></span></span>`], ['Category', '160px', d => esc(d.cat)], ['Format', '74px', d => `<span class="frtag">${extOf(d.name)}</span>`], ['Uploaded', '96px', d => `<span class="num">${esc(d.date)}</span>`], ['Uploaded by', '170px', d => `${esc(d.by)}<span class="sub">${esc(d.role)}</span>`], ['', '110px', (d) => `<button class="btn sm" data-a="fdocdl" data-id="${c.id}" data-v="${esc(d.name)}">${ic('download', 14)} Download</button>`, 'r']], D)
+      : `<div class="fempty sm">${ic('file', 26)}<b>No documents attached</b><span>Upload the first document above.</span></div>`}</section>`;
+  const faxTab = `<section class="card"><div class="card-h"><h2>Faxes <span class="count">${FX.length}</span></h2><button class="btn primary" data-a="ffax14" data-id="${c.id}">${ic('fax', 16)} Fax documents</button></div>
+    ${FX.length ? dtable([['Sent', '150px', f => `<span class="num">${esc(f.when)}</span>`], ['To', 'auto', f => `<b>${esc(f.to)}</b>${f.attn ? `<span class="sub">Attn: ${esc(f.attn)}</span>` : ''}`], ['Fax number', '130px', f => `<span class="num">${esc(f.fax)}</span>`], ['Documents', 'auto', f => esc(f.docs.join(', '))], ['Pages', '60px', f => `<span class="num">${f.pages}</span>`, 'r'], ['Status', '150px', f => pill(f.status)], ['Sent by', '130px', f => esc(f.by)]], FX)
+      : `<div class="fempty sm">${ic('fax', 26)}<b>No faxes sent from the FRM Workspace yet</b><span>Fax documents to the ordering office or scan facility.</span></div>`}</section>`;
+  const tabs = [['details', 'Case details'], ['notes', `Notes <span class="n num">${N.length}</span>`], ['msgs', `Messages <span class="n num">${M.length}</span>`], ['docs', `Documents <span class="n num">${D.length}</span>`], ['faxes', `Faxes <span class="n num">${FX.length}</span>`]];
+  return `<div class="page fcasepage"><div class="pagehead"><div><div class="crumbs"><a href="#" data-a="go" data-r="f-cases">My cases</a>${ic('chevr', 12)}<span>${id}</span></div></div></div>${head}${alert}
+    <div class="tabs fctabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-a="fctab" data-v="${k}">${l}</button>`).join('')}</div>
+    ${tab === 'notes' ? notesTab : tab === 'msgs' ? msgsTab : tab === 'docs' ? docsTab : tab === 'faxes' ? faxTab : details}</div>`; };
+const kb14 = (n) => !n ? '' : n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+
+/* ---------- Drawers: log scan status, fax documents, new case email ---------- */
+{ const _d = drawer; drawer = function () { const d = S.drawer; if (!isFRM() || !d || !['fadm14', 'ffax14', 'femail'].includes(d.type)) return _d();
+  const enter = LAST_DRAWER !== d.type + (d.id || '') && !LAST_DRAWER, e = d.err || {};
+  const shell = (title, body, foot, wide) => `<div class="drawer-scrim ${enter ? 'enter' : ''}" data-a="drawerclose"></div><aside class="drawer ${enter ? 'enter' : ''} ${wide ? 'wide14' : ''}" role="dialog" aria-label="${esc(title)}"><div class="drawer-h"><h2>${esc(title)}</h2><button class="iconbtn" data-a="drawerclose" aria-label="Close">${ic('x', 18)}</button></div><div class="drawer-b">${body}</div><div class="drawer-f">${foot}</div></aside>`;
+  if (d.type === 'femail') { const c = cById(d.id), x = fx13(c), id = GEHC(c.id);
+    return shell('New case email', `<div class="note-banner">${ic('info', 16)}<span>Sent automatically through eMAX's email service when a new case is created for an account in your territory. The FRM is picked by the ordering office.</span></div>
+      <div class="email14"><div class="em-h"><div><span class="lbl">From</span> HealthPacer Notifications &lt;notifications@emaxhealth.example&gt;</div><div><span class="lbl">To</span> ${esc(x.frm.name)}</div><div><span class="lbl">Subject</span> <b>New case ${id} for ${esc(c.facility)}</b></div></div>
+        <div class="em-b">${logo(true).replace('logo-full', 'logo-full em-logo')}<p>Hi ${esc(x.frm.name.split(' ')[0])},</p><p>A new case was created for an account in your territory.</p>
+          <table><tr><td>Case ID</td><td><b>${id}</b></td></tr><tr><td>Ordering office</td><td><b>${esc(c.facility)}</b></td></tr><tr><td>Scan facility</td><td><b>${esc(x.scan)}</b></td></tr></table>
+          <a class="em-btn" href="#/cases/${id}" data-a="femailgo" data-id="${c.id}">Open the case in the FRM Workspace</a><p class="em-f">You get this email because the ordering office is in your territory. The link opens the case after you sign in.</p></div></div>`,
+      `<span style="flex:1"></span><button class="btn" data-a="drawerclose">Close</button>`, 1); }
+  const c = cById(d.id);
+  if (d.type === 'fadm14') { const a = c.adm || {}, o = d.o || a.outcome || 'Admin';
+    return shell('Log scan status', `<div class="note-banner">${ic('info', 16)}<span>${GEHC(c.id)} · ${esc(c.first)} ${esc(c.last)}. Record whether the scan was given, after confirming with the facility or the patient.</span></div>
+      <div class="radio-cards">${[['Admin', 'Scan was given'], ['No admin', 'Scan was not given'], ['Unknown admin', 'Could not confirm']].map(([v, l]) => `<label><input type="radio" name="fadmo" data-a="fadmo" data-v="${v}" ${o === v ? 'checked' : ''}><span><b>${v}</b> · ${l}</span></label>`).join('')}</div>
+      ${o === 'Admin' ? inp('fadmd', 'Scan date', { type: 'date', req: 1, err: e.date, v: a.date ? isoOf(a.date) : c.sched ? isoOf(c.sched) : '' }) : ''}`,
+      `<button class="btn" data-a="drawerclose">Cancel</button><span style="flex:1"></span><button class="btn primary" data-a="fadmsave">Save status</button>`); }
+  /* Fax documents: 1 Recipient, 2 Documents and cover sheet */
+  const x = fx13(c), D = docs14(c), st = d.step || 0, R = d.r || (d.r = { who: 'office', name: c.facility, attn: '', fax: faxFor(c.facility, 'o'), docs: D.length ? [D[0].name] : [], memo: '' });
+  const steps = `<ol class="mstepper">${['Recipient', 'Documents and cover sheet'].map((s, i) => `<li class="${i < st ? 'done' : i === st ? 'on' : ''}"><span>${i < st ? ic('check', 12) : i + 1}</span>${s}</li>`).join('')}</ol>`;
+  if (st === 0) return shell('Fax documents', `${steps}<div class="radio-cards">${[['office', 'Ordering office', c.facility, faxFor(c.facility, 'o')], ['scan', 'Scan facility', x.scan, faxFor(x.scan, 's')], ['other', 'Someone else', 'Enter the name and fax number', '']].map(([v, l, n, f]) => `<label><input type="radio" name="ffw" data-a="ffwho" data-v="${v}" ${R.who === v ? 'checked' : ''}><span><b>${l}</b><span class="sub">${esc(n)}${f ? ' · ' + esc(f) : ''}</span></span></label>`).join('')}</div>
+      ${inp('ffname', 'Recipient name', { req: 1, err: e.name, v: R.name })}${inp('ffattn', 'Attention', { opt: 1, v: R.attn, phText: 'For example, billing team' })}${inp('fffax', 'Fax number', { req: 1, err: e.fax, v: R.fax, phText: '(999) 999-9999' })}`,
+    `<button class="btn" data-a="drawerclose">Cancel</button><span style="flex:1"></span><button class="btn primary" data-a="ffstep" data-v="1">Continue ${ic('chevr', 16)}</button>`);
+  const pages = R.docs.length * 2 + 1;
+  return shell('Fax documents', `${steps}<div class="input ${e.docs ? 'err' : ''}"><span class="lbl">Documents to send <span class="req">*</span></span><div class="fcks">${D.length ? '' : '<span class="muted">This case has no documents yet. Upload one on the Documents tab first.</span>'}${D.map(dd => `<label class="opt"><input type="checkbox" class="ffdoc" value="${esc(dd.name)}" ${R.docs.includes(dd.name) ? 'checked' : ''}><span>${esc(dd.name)} <span class="muted">${esc(dd.cat)}</span></span></label>`).join('')}</div>${e.docs ? `<span class="errmsg">${e.docs}</span>` : ''}<span class="muted" style="font-size:12px">Several documents are combined into one fax.</span></div>
+      ${inp('ffmemo', 'Memo on the cover sheet', { opt: 1, area: 1, h: 70, v: R.memo })}
+      <div class="cover14"><div class="cv-h"><b>Fax cover sheet</b><span class="muted">Added automatically</span></div><div class="cv-g"><span>To</span><b>${esc(R.name)}${R.attn ? ', attn: ' + esc(R.attn) : ''}</b><span>Fax</span><b>${esc(R.fax)}</b><span>From</span><b>${esc(frmMe().name)}, Field reimbursement manager</b><span>Case</span><b>${GEHC(c.id)}</b><span>Pages</span><b>${pages} including this page</b></div><p>Confidential: this fax contains protected health information. If you received it by mistake, call the sender and destroy all copies.</p></div>`,
+    `<button class="btn" data-a="ffstep" data-v="-1">${ic('chevl', 16)} Back</button><span style="flex:1"></span><button class="btn primary" data-a="ffsend">${ic('send', 16)} Send fax</button>`); }; }
+
+/* ---------- Downloads: case summary PDF and documents ---------- */
+function pdf14(blocks, title) { /* blocks: [{t, s, b, gap, color}] -> a simple text PDF */
+  const W = 612, H = 792, M = 54, enc = (s) => String(s).replace(/[^\x20-\x7e]/g, (ch) => ({ '·': '-', '–': '-', '’': "'", '“': '"', '”': '"' }[ch] || ' ')).replace(/([\\()])/g, '\\$1');
+  const wrap = (s, size) => { const max = Math.floor((W - 2 * M) / (size * 0.52)), out = []; String(s).split('\n').forEach(p => { let line = ''; p.split(' ').forEach(w => { if ((line + ' ' + w).trim().length > max) { out.push(line); line = w; } else line = (line + ' ' + w).trim(); }); out.push(line); }); return out; };
+  const pages = []; let ops = [], y = H - M - 40;
+  const header = () => { ops.push(`0.24 0.44 0.31 rg 0 ${H - 52} ${W} 52 re f`, `BT /F2 15 Tf 1 1 1 rg ${M} ${H - 33} Td (${enc(title)}) Tj ET`); };
+  header();
+  blocks.forEach(b => { const size = b.s || 10.5; if (b.gap) y -= b.gap; wrap(b.t, size).forEach(l => { if (y < M + 30) { pages.push(ops); ops = []; header(); y = H - M - 40; } ops.push(`BT /${b.b ? 'F2' : 'F1'} ${size} Tf ${b.color || '0.11 0.2 0.27'} rg ${M} ${y} Td (${enc(l)}) Tj ET`); y -= size * 1.45; }); });
+  pages.push(ops);
+  const objs = []; const add = (s) => { objs.push(s); return objs.length; };
+  const cat = add(''), pagesId = add(''), f1 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'), f2 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>'), kids = [];
+  pages.forEach((p, i) => { const foot = `BT /F1 8 Tf 0.4 0.45 0.5 rg ${M} 30 Td (Confidential: contains protected health information. Page ${i + 1} of ${pages.length}) Tj ET`; const s = p.concat(foot).join('\n'); const cs = add(`<< /Length ${s.length} >>\nstream\n${s}\nendstream`); kids.push(add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> /Contents ${cs} 0 R >>`)); });
+  objs[cat - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`; objs[pagesId - 1] = `<< /Type /Pages /Kids [${kids.map(k => k + ' 0 R').join(' ')}] /Count ${kids.length} >>`;
+  let out = '%PDF-1.4\n', offs = []; objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const xref = out.length; out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offs.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('')}trailer\n<< /Size ${objs.length + 1} /Root ${cat} 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return new Blob([out], { type: 'application/pdf' }); }
+function save14(blob, name) { try { const u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return true; } catch (e) { return false; } }
+function summaryPdf(c) { const x = fx13(c), id = GEHC(c.id), N = notes14(c).slice(-5), j = jIdx14(x);
+  const B = [{ t: `${c.first} ${c.last}`, s: 18, b: 1 }, { t: `Case ${id}  -  ${prodOf(c)}  -  Generated ${nowStamp14()} by ${frmMe().name}`, s: 9.5, color: '0.36 0.44 0.51' }];
+  const sec = (h, rows) => { B.push({ t: h.toUpperCase(), s: 9.5, b: 1, gap: 12, color: '0.17 0.33 0.22' }); rows.forEach(([k, v]) => B.push({ t: `${k}:  ${v}`, s: 10.5 })); };
+  sec('Patient', [['Name', `${c.first} ${c.mi ? c.mi + '. ' : ''}${c.last}`], ['Date of birth', fmt(c.dob)], ['Patient ID', c.pid], ['Phone', c.phone]]);
+  sec('Case', [['Case ID', id], ['Drug group', prodOf(c)], ['Primary medical payer', carrierOf(c)], ['Status with stage', fstText(x)], ['Business days in status', String(x.days)], ['Case alert', x.alert || 'None'], ['Case created', fmt(c.start)], ['Journey stage', j < 0 ? 'Cancelled' : J14[Math.min(j, 5)]]]);
+  sec('Provider and facility', [['Ordering office', c.facility], ['Prescriber', c.prescriber], ['Scan facility', x.scan], ['Scheduled scan date', c.sched || 'Not scheduled']]);
+  sec('Care team', [['Supporting FRM', `${x.frm.name}${x.frm.area ? ' (' + x.frm.area + ')' : ''}`], ['Case manager', c.owner || 'Unassigned']]);
+  B.push({ t: 'RECENT NOTES', s: 9.5, b: 1, gap: 12, color: '0.17 0.33 0.22' }); if (!N.length) B.push({ t: 'No notes yet.' }); N.forEach(n => { B.push({ t: `${n.when}  -  ${n.by} (${n.role})`, s: 9, b: 1, gap: 4 }); B.push({ t: n.text }); });
+  return pdf14(B, 'HealthPacer  -  Case summary'); }
+Object.assign(EXTRA, {
+  fpdf14(t) { const c = cById(t.dataset.id), name = `Case_Summary_${GEHC(c.id)}.pdf`; toast(save14(summaryPdf(c), name) ? `Downloaded ${name}` : 'The download could not start in this browser'); },
+  fdocdl(t) { const c = cById(t.dataset.id), n = t.dataset.v, f = FILES14[c.id + '|' + n];
+    if (f) { save14(f, n); toast(`Downloaded ${n}`); return; } const nm = /\.pdf$/i.test(n) ? n : n.replace(/\.[a-z0-9]+$/i, '') + '.pdf';
+    save14(pdf14([{ t: n, s: 16, b: 1 }, { t: `Sample document for ${GEHC(c.id)}. In the product this downloads the original file from HealthPacer document storage.`, gap: 10 }], 'HealthPacer  -  Document'), nm); toast(`Downloaded ${nm}`); },
+  fadm14(t) { S.drawer = { type: 'fadm14', id: t.dataset.id }; },
+  fadmo(t) { S.drawer.o = t.dataset.v; },
+  fadmsave() { const d = S.drawer, c = cById(d.id), o = d.o || (c.adm || {}).outcome || 'Admin', dt = val('fadmd'); if (o === 'Admin' && !dt) { d.err = { date: 'Choose the scan date' }; return; }
+    c.adm = { outcome: o, date: o === 'Admin' ? usOf(dt) : '', via: 'Logged by the FRM', by: frmMe().name, when: fmt(TODAY) }; S.drawer = null; toast(`Scan status saved: ${o}`); },
+  ffax14(t) { S.drawer = { type: 'ffax14', id: t.dataset.id, step: 0 }; },
+  ffwho(t) { const d = S.drawer, c = cById(d.id), x = fx13(c), v = t.dataset.v; d.r.who = v; d.r.name = v === 'office' ? c.facility : v === 'scan' ? x.scan : ''; d.r.fax = v === 'office' ? faxFor(c.facility, 'o') : v === 'scan' ? faxFor(x.scan, 's') : ''; d.err = {}; const set = (id, v2) => { const el = document.getElementById(id); if (el) el.value = v2; }; set('ffname', d.r.name); set('fffax', d.r.fax); },
+  ffstep(t) { const d = S.drawer, R = d.r, dir = +t.dataset.v;
+    if (d.step === 0) { R.name = val('ffname'); R.attn = val('ffattn'); R.fax = val('fffax'); }
+    if (d.step === 1) { R.docs = [...document.querySelectorAll('.ffdoc')].filter(x => x.checked).map(x => x.value); R.memo = val('ffmemo'); }
+    if (dir > 0) { const e = {}; if (!R.name) e.name = 'Enter the recipient name'; if (digits10(R.fax).length !== 10) e.fax = 'Enter a 10-digit fax number'; if (Object.keys(e).length) { d.err = e; return; } }
+    d.err = {}; d.step = Math.max(0, Math.min(1, d.step + dir)); },
+  ffsend() { const d = S.drawer, R = d.r, c = cById(d.id); R.docs = [...document.querySelectorAll('.ffdoc')].filter(x => x.checked).map(x => x.value); R.memo = val('ffmemo');
+    if (!R.docs.length) { d.err = { docs: 'Choose at least one document' }; return; } const n = digits10(R.fax), fax = `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
+    const f = { when: nowStamp14(), to: R.name, attn: R.attn, fax, docs: R.docs, pages: R.docs.length * 2 + 1, status: 'Sent to fax service', by: frmMe().name }; faxes14(c).unshift(f);
+    notes14(c).push({ by: 'System', role: 'System', when: f.when, text: `Fax sent by ${f.by} (FRM) to ${f.to}, ${fax}: ${f.docs.join(', ')}.` });
+    setTimeout(() => { f.status = 'Delivered'; if (S.route === 'f-case') render(); }, 4000);
+    S.drawer = null; S.fctab = 'faxes'; toast(`Fax sent to ${R.name}`); },
+  fmsgsend(t) { const el = document.getElementById('fmsg14'), text = el ? el.value.trim() : ''; if (!text) { S.fmsgErr = 'Write a message before sending'; return; }
+    const c = cById(t.dataset.id); msgs14(c).push({ by: frmMe().name, role: 'FRM', when: nowStamp14(), text }); S.fmsgDraft = ''; S.fmsgErr = ''; toast('Message sent to the case team'); },
+  fupsave(t) { const U = S.fup || (S.fup = {}), c = cById(t.dataset.id); U.cat = val('fupcat'); U.err = {};
+    if (!U.name) { U.err.file = 'Choose a file to upload'; return; } if (U.bad) { U.err.file = U.bad; return; } if (!U.cat) { U.err.cat = 'Choose a category for the document'; return; }
+    docs14(c).unshift({ name: U.name, cat: U.cat, date: fmt(TODAY), by: frmMe().name, role: 'FRM', size: kb14(U.size) }); if (U.file) FILES14[c.id + '|' + U.name] = U.file; S.fup = {}; toast('Document uploaded to the case'); },
+  femail(t) { S.drawer = { type: 'femail', id: t.dataset.id }; },
+  femailgo(t) { S.drawer = null; S.fcaseId = t.dataset.id; S.fctab = 'details'; S.route = 'f-case'; }
+});
+{ const _o = EXTRA.fopencase; EXTRA.fopencase = function (t, e) { S.fup = {}; S.fmsgErr = ''; S.fmsgDraft = ''; return _o(t, e); }; }
+{ const _t = EXTRA.fctab; EXTRA.fctab = function (t, e) { S.fmsgErr = ''; return _t(t, e); }; }
+document.addEventListener('input', (e) => { if (e.target.id === 'fmsg14') { S.fmsgDraft = e.target.value; if (S.fmsgErr && e.target.value.trim()) { S.fmsgErr = ''; } } });
+const ALLOWED14 = ['PDF', 'TIF', 'TIFF', 'PNG', 'JPG', 'JPEG', 'DOC', 'DOCX'];
+function pickFile14(f) { if (!f) return; const ext = extOf(f.name), bad = !ALLOWED14.includes(ext) ? `${ext || 'This'} files cannot be uploaded. Use PDF, TIFF, PNG, JPG, DOC or DOCX.` : f.size > 25 * 1048576 ? `This file is ${kb14(f.size)}. Files can be up to 25 MB.` : '';
+  S.fup = { name: f.name, size: f.size, file: f, bad, cat: val('fupcat') || (S.fup || {}).cat, err: bad ? { file: bad } : {} }; render(); }
+document.addEventListener('change', (e) => { if (e.target.id === 'fup14') pickFile14(e.target.files[0]); if (e.target.id === 'fupcat' && S.fup) S.fup.cat = e.target.value; });
+document.addEventListener('dragover', (e) => { const z = e.target.closest && e.target.closest('.fdz14'); if (!z) return; e.preventDefault(); z.classList.add('drag'); });
+document.addEventListener('dragleave', (e) => { const z = e.target.closest && e.target.closest('.fdz14'); if (z) z.classList.remove('drag'); });
+document.addEventListener('drop', (e) => { const z = e.target.closest && e.target.closest('.fdz14'); if (!z) return; e.preventDefault(); pickFile14(e.dataTransfer.files[0]); });
+
+/* ---------- New case email (EMAXPAC-716): settings, preview, deep link ---------- */
+{ const _s = ROUTES_X['f-settings']; ROUTES_X['f-settings'] = () => { const c = allCases13().filter(x => x.frm.name === meName()).sort((p, q) => q.c.start - p.c.start)[0];
+  const card = `<section class="card"><div class="card-h"><h2>Notifications</h2></div><div class="card-b" style="display:flex;flex-direction:column;gap:10px">
+    <div class="notif14"><span class="ico14">${ic('mail', 18)}</span><div><b>New case in my territory</b><span class="muted">An email each time a case is created where the ordering office is one of your accounts. It shows the case ID, ordering office and scan facility, with a link straight to the case.</span></div><span class="pill t-ok">On</span></div>
+    ${c ? `<div><button class="btn" data-a="femail" data-id="${c.c.id}">${ic('eye', 16)} Preview the email</button></div>` : ''}</div></section>`;
+  return _s().replace('<section class="card"><div class="card-h"><h2>Appearance</h2>', card + '<section class="card"><div class="card-h"><h2>Appearance</h2>'); }; }
+if (!P.eye) P.eye = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>';
+/* Deep link: #/cases/GEHC-100304 opens the case in the FRM Workspace */
+function deepLink14() { const m = String(location.hash || '').match(/^#\/cases\/(?:GEHC-)?(\d{4,7})$/i); if (!m) return false; const x = allCases13().find(z => GEHC(z.c.id).slice(5) === m[1] || z.c.id.endsWith(m[1])); if (!x) return false;
+  if (!isFRM()) { S.app = 'frm'; try { localStorage.setItem('hp-app', 'frm'); } catch (e) { } applyApp(); } S.drawer = null; S.fcaseId = x.c.id; S.fctab = 'details'; S.route = 'f-case'; return true; }
+window.addEventListener('hashchange', () => { if (deepLink14()) render(); });
+deepLink14();
+/* Hub: when a new case is created, say which FRM was emailed */
+{ const _iks = EXTRA.iksubmit; EXTRA.iksubmit = function (t, e) { const r = _iks(t, e); if (!isHCP() && S.createdId && !S.ik) { const c = byId(S.createdId); if (c) { const a = frmOfAcct(c.facility), t2 = terr12(presZipCase(c), prodOf(c)), who = a ? a.frm : t2 && t2.frm !== 'Unassigned' ? t2.frm : ''; if (who) toast(`Case created. ${who} (FRM) was emailed.`); } } return r; }; }
+
 window.HP_START = () => render();
