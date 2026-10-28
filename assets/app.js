@@ -6542,4 +6542,60 @@ function geSync16() { const html = document.documentElement, on = GE16.on;
 document.addEventListener('click', (e) => { const h = e.target.closest && e.target.closest('.pagehead h1'); if (!h || h.textContent.trim() !== 'Settings' || e.detail !== 3) return;
   try { getSelection().removeAllRanges(); } catch (x) { } GE16.on = !GE16.on; render(); toast(GE16.on ? 'GE HealthCare branding on' : 'eMAX branding restored'); });
 
+
+/* ================= FRM V17: case documents story (view, download, upload, shared with the Hub) ================= */
+FRM_VERSIONS.unshift(['f6', 'V17', 'Review round 16', 'Case documents: View opens a preview of the document beside the list, and Download saves it to the device. Uploads keep every file (no delete or replace, a second file with the same name is added as its own entry), the new file is highlighted at the top of the list, and documents added by FRMs show in the Hub case Documents tab marked as FRM uploads, with Hub documents showing for the FRM.']);
+VERSIONS.unshift(['v17', 'V17', 'Review round 16', 'Case Documents tab shows documents uploaded by FRMs in the FRM Workspace, marked FRM upload, and documents added in the Hub show for FRMs.']);
+S.ver = VERSIONS[0][0]; try { const v = localStorage.getItem('hp-ver'); if (v && VERSIONS.some(x => x[0] === v)) S.ver = v; } catch (e) { }
+applyVersion();
+const FILES17 = {}; let UID17 = 0;
+{ const _d = docs14; docs14 = function (c) { const L = _d(c); L.forEach(d => { if (!d.uid) d.uid = 'd' + (++UID17); }); return L; }; }
+const coarse17 = () => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } };
+const isImg17 = (n) => /\.(png|jpe?g)$/i.test(n);
+function docFile17(c, d) { const f = FILES17[d.uid]; if (f) return f; return pdf14([{ t: d.name, s: 16, b: 1 }, { t: `${d.cat} · ${GEHC(c.id)} · added ${d.date} by ${d.by}`, gap: 6 }, { t: 'Sample document. In the product this is the original file from HealthPacer document storage.', gap: 10 }], 'HealthPacer  -  Document'); }
+const dlName17 = (d) => FILES17[d.uid] || /\.pdf$/i.test(d.name) ? d.name : d.name.replace(/\.[a-z0-9]+$/i, '') + '.pdf';
+
+function docsSection17(c) { const D = docs14(c), U = S.fup || {}, ue = U.err || {};
+  const zone = `<label class="fdz14 ${U.drag ? 'drag' : ''} ${ue.file ? 'err' : ''}">${ic('upload', 22)}<span>${U.name ? `<b>${esc(U.name)}</b> <span class="muted">${kb14(U.size)}${U.bad ? '' : ' · ready to upload'}</span>` : `<b>${coarse17() ? 'Choose a file from this device' : 'Drop a file here or choose a file'}</b>`}<span class="muted">PDF, TIFF, PNG, JPG, DOC or DOCX, up to 25 MB</span></span><input type="file" id="fup14" accept=".pdf,.tif,.tiff,.png,.jpg,.jpeg,.doc,.docx" hidden></label>`;
+  const up = `<div class="fupl">${zone}<div class="fupl-f"><label class="ff14 ${ue.cat ? 'err' : ''}"><span>Category <span class="req">*</span></span><select id="fupcat">${['<option value="">Choose a category</option>', ...DCATS14.map(k => `<option ${U.cat === k ? 'selected' : ''}>${k}</option>`)].join('')}</select></label><button class="btn primary" data-a="fupsave" data-id="${c.id}">${ic('upload', 16)} Upload</button>${U.name ? `<button class="btn ghost" data-a="fupclear">Clear</button>` : ''}</div>
+    ${ue.file || ue.cat ? `<span class="errmsg">${ic('alert', 13)} ${esc(ue.file || ue.cat)}</span>` : ''}<span class="muted" style="font-size:12px">Uploaded documents are shared with the case team in the Hub and cannot be deleted or replaced.</span></div>`;
+  const list = D.length ? dtable([['Document', 'auto', d => `<span class="doccell">${ic('file', 16)}<span><button class="link-btn d17n" data-a="fdocview" data-id="${c.id}" data-v="${d.uid}">${esc(d.name)}</button>${d.uid === S.fnew17 ? ' <span class="pill t-ok nodot">New</span>' : ''}</span></span>`], ['Category', '150px', d => esc(d.cat)], ['Format', '70px', d => `<span class="frtag">${extOf(d.name)}</span>`], ['Uploaded', '92px', d => `<span class="num">${esc(d.date)}</span>`], ['Uploaded by', '160px', d => `${esc(d.by)}<span class="sub">${esc(d.role)}</span>`],
+    ['', '176px', d => `<span class="d17a"><button class="btn sm" data-a="fdocview" data-id="${c.id}" data-v="${d.uid}">${ic('eye', 14)} View</button><button class="btn sm" data-a="fdocdl17" data-id="${c.id}" data-v="${d.uid}">${ic('download', 14)} Download</button></span>`, 'r']], D, { sel: d => d.uid === S.fnew17 })
+    : `<div class="fempty sm">${ic('file', 26)}<b>No documents attached</b><span>Upload the first document above.</span></div>`;
+  return `<section class="card"><div class="card-h"><h2>Documents <span class="count">${D.length}</span></h2><span style="flex:1"></span><button class="btn" data-a="ffax14" data-id="${c.id}" ${D.length ? '' : 'disabled'}>${ic('fax', 16)} Fax documents</button></div>${up}${list}</section>`; }
+{ const _cv = ROUTES_X['f-case']; ROUTES_X['f-case'] = () => { let h = _cv(); if ((S.fctab || 'details') !== 'docs') return h; const c = cById(S.fcaseId); if (!c) return h;
+  return h.replace(/<section class="card"><div class="card-h"><h2>Documents <span class="count">[\s\S]*?<\/section>/, docsSection17(c)); }; }
+
+/* document preview drawer */
+{ const _d = drawer; drawer = function () { const d = S.drawer; if (!d || d.type !== 'fdoc17') return _d();
+  const c = cById(d.id), doc = docs14(c).find(x => x.uid === d.uid); if (!doc) return '';
+  const enter = LAST_DRAWER !== d.type + d.uid && !LAST_DRAWER, f = FILES17[doc.uid];
+  if (f && isImg17(doc.name) && !d.url) d.url = URL.createObjectURL(f);
+  const page = d.url ? `<div class="d17img"><img src="${d.url}" alt="${esc(doc.name)}"></div>`
+    : `<div class="viewer"><div class="vpage-wrap"><div class="vpage" style="--z:1"><div class="vhead"><b>${esc(doc.cat.toUpperCase())}</b><span>${esc(doc.name.replace(/\.[a-z0-9]+$/i, '').replace(/_/g, ' '))}</span></div><div class="vgrid"><span>Patient</span><span>${esc(c.first)} ${esc(c.last)}</span><span>Case</span><span>${GEHC(c.id)}</span><span>Date</span><span>${esc(doc.date)}</span></div><div class="vlines">${Array.from({ length: 14 }, (_, i) => `<i style="width:${[92, 100, 84, 97, 70, 100, 88, 60][i % 8]}%"></i>`).join('')}</div></div></div></div>${f ? '<p class="muted" style="font-size:12.5px;margin:8px 0 0">This file type previews after download. Download opens the original file.</p>' : ''}`;
+  const meta = `<div class="fields">${fld('Category', doc.cat, false)}${fld('Format', extOf(doc.name), false)}${fld('Uploaded', doc.date, false)}${fld('Uploaded by', `${doc.by} (${doc.role})`, false)}${doc.size ? fld('Size', doc.size, false) : ''}</div>`;
+  return `<div class="drawer-scrim ${enter ? 'enter' : ''}" data-a="drawerclose"></div><aside class="drawer wide14 ${enter ? 'enter' : ''}" role="dialog" aria-label="${esc(doc.name)}"><div class="drawer-h"><h2>${esc(doc.name)}</h2><button class="iconbtn" data-a="drawerclose" aria-label="Close">${ic('x', 18)}</button></div><div class="drawer-b">${page}${meta}</div><div class="drawer-f"><button class="btn" data-a="drawerclose">Close</button><span style="flex:1"></span><button class="btn primary" data-a="fdocdl17" data-id="${c.id}" data-v="${doc.uid}">${ic('download', 16)} Download</button></div></aside>`; }; }
+
+Object.assign(EXTRA, {
+  fdocview(t) { S.drawer = { type: 'fdoc17', id: t.dataset.id, uid: t.dataset.v }; },
+  fdocdl17(t) { const c = cById(t.dataset.id), d = docs14(c).find(x => x.uid === t.dataset.v); if (!d) return; const n = dlName17(d); toast(save14(docFile17(c, d), n) ? `Downloaded ${n}` : 'The download could not start in this browser'); },
+  fupclear() { S.fup = {}; },
+  fupsave(t) { const U = S.fup || (S.fup = {}), c = cById(t.dataset.id); U.cat = val('fupcat'); U.err = {};
+    if (!U.name) { U.err.file = 'Choose a file to upload'; return; } if (U.bad) { U.err.file = U.bad; return; } if (!U.cat) { U.err.cat = 'Choose a category for the document'; return; }
+    const d = { uid: 'd' + (++UID17), name: U.name, cat: U.cat, date: fmt(TODAY), by: frmMe().name, role: 'FRM', size: kb14(U.size), hubNew: true };
+    docs14(c).unshift(d); if (U.file) FILES17[d.uid] = U.file; S.fnew17 = d.uid; S.fup = {}; toast('Document uploaded and shared with the case team'); }
+});
+{ const _o = EXTRA.fopencase; EXTRA.fopencase = function (t, e) { S.fnew17 = null; return _o(t, e); }; }
+{ const _t = EXTRA.fctab; EXTRA.fctab = function (t, e) { S.fnew17 = null; return _t(t, e); }; }
+
+/* Hub: FRM uploads show on the case Documents tab; documents the Hub adds show for the FRM */
+{ const _td = tabDocs; tabDocs = function () { let h = _td(); const c = byId(S.caseId); if (!c || !D14[c.id]) return h;
+  const F = D14[c.id].filter(d => d.role === 'FRM'); if (!F.length) return h;
+  const rows = F.map(d => `<tr class="${d.hubNew ? 'flash' : ''}"><td>${ic('file', 15)} ${esc(d.name)} <span class="pill t-info nodot" style="height:20px">FRM upload</span></td><td>${esc(d.cat)}</td><td class="num">${esc(d.date)}</td><td>${esc(d.by)}</td><td class="num">${esc(d.size || '')}</td><td><span class="muted">Not shared</span></td><td><span class="muted">Not shared</span></td><td></td></tr>`).join('');
+  F.forEach(d => { d.hubNew = false; });
+  return h.replace('<tbody>', '<tbody>' + rows); }; }
+{ const _a = EXTRA.adddocsave; EXTRA.adddocsave = function (t, e) { const before = DOCS.length, r = _a(t, e); const c = byId(S.caseId);
+  if (DOCS.length > before && c && t.dataset.v !== 'fac') { const x = DOCS[0]; docs14(c).unshift({ uid: 'd' + (++UID17), name: x[0], cat: x[1], date: x[2], by: x[3], role: 'Hub case manager', size: x[4] }); } return r; }; }
+{ const _r = render; render = function () { const out = _r.apply(this, arguments); try { if (!isFRM() && !isHCP() && S.route === 'case') { const c = byId(S.caseId), n = c && D14[c.id] ? D14[c.id].filter(d => d.role === 'FRM').length : 0, el = document.querySelector('[data-a="tab"][data-v="docs"] .n'); if (n && el) el.textContent = DOCS.length + n; } } catch (e) { } return out; }; }
+
 window.HP_START = () => render();
