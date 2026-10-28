@@ -69,7 +69,7 @@ const TONE = {
   'Consented': 't-ok', 'Declined': 't-danger', 'Not Provided': 't-neutral', 'Expired': 't-danger',
   'Pending Shipment': 't-warn', 'Shipped': 't-ok', 'No Shipment': 't-neutral', 'None': 't-neutral'
 };
-const SW = { 't-info': '#1d5a8c', 't-navy': '#254059', 't-violet': '#76518e', 't-warn': '#d69a1c', 't-ok': '#3d714e', 't-neutral': '#8a9aa8', 't-danger': '#d9533a' };
+const SW = { 't-info': '#254059', 't-navy': '#254059', 't-violet': '#76518e', 't-warn': '#d69a1c', 't-ok': '#3d714e', 't-neutral': '#8a9aa8', 't-danger': '#d9533a' };
 const pill = (s, extra = '') => `<span class="pill ${TONE[s] || 't-neutral'} ${extra}">${esc(s)}</span>`;
 
 /* ================= Mock data ================= */
@@ -2956,8 +2956,8 @@ dashFocus = function () {
 const PL_SECS = [['principles', 'Principles'], ['color', 'Color'], ['type', 'Typography'], ['space', 'Spacing, radius, elevation'], ['buttons', 'Buttons'], ['status', 'Status pills'], ['inputs', 'Form fields'], ['choice', 'Choices'], ['nav', 'Tabs and segments'], ['tables', 'Tables and lists'], ['cards', 'Cards and tiles'], ['panels', 'Side panels'], ['overlays', 'Modals and side panel forms'], ['feedback', 'Feedback and empty states'], ['wizard', 'Steppers and wizards'], ['layouts', 'Page patterns'], ['motion', 'Motion'], ['rules', 'Rules we design against']];
 const PL_HUB = [['Brand', '#3d714e', '--green'], ['Brand dark', '#2c5539', '--green-700'], ['Brand tint', '#eaf3ed', '--green-50'], ['Brand line', '#d3e6d9', '--green-100'], ['Brand gradient start', '#4f8a62', 'gradient'], ['Brand gradient end', '#235333', 'gradient']];
 const PL_HCP = [['Brand', '#3d5571', '--green (blue program)'], ['Brand dark', '#2c3f55', '--green-700'], ['Brand tint', '#eaeef3', '--green-50'], ['Brand line', '#d3dce6', '--green-100'], ['Brand gradient start', '#4f6b8a', 'gradient'], ['Brand gradient end', '#233953', 'gradient']];
-const PL_INK = [['Ink', '#1c3246', '--ink'], ['Ink 2', '#3f5467', '--ink-2'], ['Muted', '#5d7182', '--muted'], ['Faint', '#8a9aa8', '--faint'], ['Line', '#dbe2e7', '--line'], ['Line 2', '#e8edf0', '--line-2'], ['Background', '#eef1f3', '--bg'], ['Surface', '#ffffff', '--surface'], ['Zebra', '#f6f8f9', '--zebra'], ['Link', '#1a6f8a', '--link']];
-const PL_STATUS = [['Success', 't-ok', '#2c6b3f', 'Approved, covered, active, consented'], ['Warning', 't-warn', '#8a5a00', 'Pending anything, waiting on someone'], ['Danger', 't-danger', '#b8412a', 'Denied, expired, overdue, appeal in progress'], ['Info', 't-info', '#1d5a8c', 'Intake, sent, in flight'], ['Navy', 't-navy', '#254059', 'Requested, complete'], ['Violet', 't-violet', '#5b3c78', 'Benefits investigation'], ['Neutral', 't-neutral', '#4a5b69', 'Closed, cancelled, not applicable']];
+const PL_INK = [['Ink', '#1c3246', '--ink'], ['Ink 2', '#3f5467', '--ink-2'], ['Muted', '#5d7182', '--muted'], ['Faint', '#8a9aa8', '--faint'], ['Line', '#dbe2e7', '--line'], ['Line 2', '#e8edf0', '--line-2'], ['Background', '#eef1f3', '--bg'], ['Surface', '#ffffff', '--surface'], ['Zebra', '#f6f8f9', '--zebra'], ['Link', '#2c5539', '--link']];
+const PL_STATUS = [['Success', 't-ok', '#2c6b3f', 'Approved, covered, active, consented'], ['Warning', 't-warn', '#8a5a00', 'Pending anything, waiting on someone'], ['Danger', 't-danger', '#b8412a', 'Denied, expired, overdue, appeal in progress'], ['Info', 't-info', '#254059', 'Intake, sent, in flight'], ['Navy', 't-navy', '#254059', 'Requested, complete'], ['Violet', 't-violet', '#5b3c78', 'Benefits investigation'], ['Neutral', 't-neutral', '#4a5b69', 'Closed, cancelled, not applicable']];
 const sw = ([n, hex, tok]) => `<div class="plsw"><span class="plchip" style="background:${hex}"></span><div><b>${n}</b><span class="mono">${hex}</span><span class="muted">${tok}</span></div>${copyBtn(hex, n)}</div>`;
 const plSec = (id, title, lead, body) => `<section class="card plsec" id="pl-${id}"><div class="card-h"><h2>${title}</h2></div><div class="card-b"><p class="pllead">${lead}</p>${body}</div></section>`;
 const plEx = (label, html, note = '') => `<div class="plex"><div class="plex-h">${label}</div><div class="plex-b">${html}</div>${note ? `<div class="plex-n">${note}</div>` : ''}</div>`;
@@ -5894,10 +5894,10 @@ function tiles13(base) { const cf = S.cf, avg = (L) => L.length ? Math.round(L.r
     <p class="muted" style="font-size:12px;margin:0">Case count and average business days in the current status or stage (business hours 8 AM to 8 PM ET, Monday to Friday, excluding program holidays). Select a tile to filter the list, and select it again to clear. Counts follow your filters, but not the status, stage or open and closed selections.</p>`; }
 ROUTES_X['f-cases'] = () => { const cf = S.cf, all = allCases13(), base = all.filter(x => cfMatch(x, cf, true)), L = base.filter(x => cfMatch(x, cf, false)).sort((a, b) => (b.open - a.open) || (b.days - a.days));
   const who = cf.frm === 'me' ? 'My cases' : cf.frm === 'all' ? 'All FRM cases' : `${cf.frm}'s cases`, fr = FRM10.find(f => f.name === cf.frm);
-  const sub = cf.frm === 'me' ? `All four products. Cases where your accounts are the ordering office or the scan facility, ${esc(frmMe().area)}.` : cf.frm === 'all' ? 'All four products, every FRM territory.' : `All four products, ${esc(fr ? fr.area : '')} territory.`;
+  const pt = cf.prod ? `${esc(cf.prod)} cases` : 'Cases', sub = cf.frm === 'me' ? `${pt} where your accounts are the ordering office or the scan facility, ${esc(frmMe().area)}.` : cf.frm === 'all' ? `${pt} in every FRM territory.` : `${pt} in the ${esc(fr ? fr.area : '')} territory.`;
   const views = `<div class="vsel"><label for="cv13">Saved view</label><select id="cv13">${SVIEWS.map(v => `<option value="${v.id}" ${S.cview === v.id ? 'selected' : ''}>${esc(v.name)}${v.isDefault ? ' (default)' : ''}</option>`).join('')}<option value="" ${!S.cview ? 'selected' : ''}>Custom filters</option></select><button class="btn" data-a="drawer" data-v="fview">${ic('plus', 16)} Save view</button>${S.cview && !(SVIEWS.find(v => v.id === S.cview) || {}).isDefault ? `<button class="btn ghost" data-a="cvdefault">Make default</button>` : ''}</div>`;
   const head = `<div class="pagehead"><div><h1>${esc(who)}</h1><div class="muted" style="font-size:13px">${sub}</div></div><span style="flex:1"></span>${views}</div>`;
-  const cols = [['Case ID', '104px', x => `<span class="mono">${GEHC(x.c.id)}</span>`], ['Patient', '150px', x => `<b>${esc(x.c.last)}, ${esc(x.c.first)}</b>`], ['DOB', '92px', x => `<span class="num">${fmt(x.c.dob)}</span>`], ['Drug group', '92px', x => esc(x.prod)],
+  const cols = [['Case ID', '112px', x => `<button class="link-btn mono cid14" data-a="fopencase" data-id="${x.c.id}" title="Open the full case">${GEHC(x.c.id)}</button>`], ['Patient', '150px', x => `<b>${esc(x.c.last)}, ${esc(x.c.first)}</b>`], ['DOB', '92px', x => `<span class="num">${fmt(x.c.dob)}</span>`], ['Drug group', '92px', x => esc(x.prod)],
     ['Status', '140px', x => `<span class="fst ${x.open ? 'o' : 'c'} ${x.status === 'Order' ? 'ord' : x.status === 'Admin' ? 'adm' : ''}">${esc(x.status)}</span>${x.stage ? `<span class="sub">${esc(x.stage)}</span>` : ''}`], ['Case alert', '140px', x => x.alert ? pill(x.alert) : '<span class="muted">None</span>'], ['Primary carrier', '150px', x => esc(carrierOf(x.c))],
     ['Scan date', '92px', x => x.c.sched ? `<span class="num">${esc(x.c.sched)}</span>` : '<span class="muted">Not set</span>'], ['Ordering office', 'auto', x => esc(x.office)], ['Scan facility', 'auto', x => esc(x.scan)],
     ['Business days', '86px', x => `<span class="num ${x.open && x.days > 10 ? 'aging' : ''}" ${x.open && x.days > 10 ? 'title="More than 10 business days in this status"' : ''}>${x.days}</span>`, 'r']];
@@ -5907,8 +5907,8 @@ ROUTES_X['f-cases'] = () => { const cf = S.cf, all = allCases13(), base = all.fi
   const body = `<section class="card"><div class="card-b" style="display:flex;flex-direction:column;gap:10px">${tiles13(base)}</div></section>
     ${chips.length ? `<div class="chips">${chips.join('')}<button class="link-btn" data-a="cfclear">Clear all</button></div>` : ''}
     <section class="card"><div class="card-h"><h2>${L.length} case${L.length === 1 ? '' : 's'}</h2><span class="muted" style="font-size:12.5px">Open cases first, then longest in status. Days over 10 are highlighted.</span><span style="flex:1"></span><button class="btn sm" data-a="fexport">${ic('download', 14)} Export</button></div>
-    ${L.length ? dtable(cols, L, { rowAct: x => `data-a="fopencase" data-id="${x.c.id}"` }) : empty}</section>`;
-  return fWork(filterDock13(all), head + body); };
+    ${L.length ? dtable(cols, pg14(L), { rowAct: x => `data-a="fcsel" data-id="${x.c.id}"`, sel: x => x.c.id === S.fcsel }) + pager14(L.length) : empty}</section>`;
+  return fWork(filterDock13(all), head + body, preview14(L)); };
 
 /* Filter inputs: selects and dates apply on change; text fields as you type */
 const cfSet = (k, v) => { S.cf[k] = v; S.cview = ''; };
@@ -6423,5 +6423,107 @@ window.addEventListener('hashchange', () => { if (deepLink14()) render(); });
 deepLink14();
 /* Hub: when a new case is created, say which FRM was emailed */
 { const _iks = EXTRA.iksubmit; EXTRA.iksubmit = function (t, e) { const r = _iks(t, e); if (!isHCP() && S.createdId && !S.ik) { const c = byId(S.createdId); if (c) { const a = frmOfAcct(c.facility), t2 = terr12(presZipCase(c), prodOf(c)), who = a ? a.frm : t2 && t2.frm !== 'Unassigned' ? t2.frm : ''; if (who) toast(`Case created. ${who} (FRM) was emailed.`); } } return r; }; }
+
+
+/* ================= FRM V15: case list pagination and side preview (Hub pattern) ================= */
+if (!P.expand) P.expand = '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>';
+FRM_VERSIONS.unshift(['f4', 'V15', 'Review round 14', 'My cases is paginated: 10, 25 or 50 rows per page with numbered pages, Previous and Next. Selecting a row opens the side preview with quick details (journey, status, days in status, carrier, scan date, offices, team, latest message), with Expand to open the full case. Colors follow the Patient Services green palette.']);
+VERSIONS.unshift(['v15', 'V15', 'Review round 14', 'Colors follow the eMAX Patient Services palette: green for primary actions and links, navy for information, amber as the accent. Sky blue removed.']);
+HCP_VERSIONS.unshift(['p4', 'V15', 'Review round 14', 'Colors follow the eMAX Patient Services palette: green links, navy for information, amber accent. Sky blue removed.']);
+S.ver = VERSIONS[0][0]; try { const v = localStorage.getItem('hp-ver'); if (v && VERSIONS.some(x => x[0] === v)) S.ver = v; } catch (e) { }
+applyVersion();
+S.hver = 'p4'; try { const v = localStorage.getItem('hp-hver'), L = localStorage.getItem('hp-hver-latest'); if (v && L === 'p4' && HCP_VERSIONS.some(x => x[0] === v)) S.hver = v; } catch (e) { }
+S.fpg = S.fpg || { p: 1, n: 25, k: '' };
+function pg14(L) { const g = S.fpg || (S.fpg = { p: 1, n: 25, k: '' }), k = JSON.stringify(S.cf || {});
+  if (g.k !== k) { g.k = k; g.p = 1; }
+  const pages = Math.max(1, Math.ceil(L.length / g.n)); if (g.p > pages) g.p = pages; if (g.p < 1) g.p = 1;
+  return L.slice((g.p - 1) * g.n, g.p * g.n); }
+function pageList14(p, n) { if (n <= 7) return Array.from({ length: n }, (_, i) => i + 1);
+  const s = new Set([1, n, p - 1, p, p + 1].filter(i => i >= 1 && i <= n)), a = [...s].sort((x, y) => x - y), out = [];
+  a.forEach((v, i) => { if (i && v - a[i - 1] > 1) out.push('…'); out.push(v); }); return out; }
+function pager14(total) { const g = S.fpg, pages = Math.max(1, Math.ceil(total / g.n)), from = total ? (g.p - 1) * g.n + 1 : 0, to = Math.min(total, g.p * g.n);
+  return `<nav class="pg14" aria-label="Case list pages"><span class="pg-info num">${from} to ${to} of ${total} case${total === 1 ? '' : 's'}</span>
+    <label class="pg-size">Rows per page <select id="fpgsize" aria-label="Rows per page">${[10, 25, 50].map(n => `<option value="${n}" ${g.n === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    <span style="flex:1"></span>
+    <div class="pg-btns"><button class="btn sm" data-a="fpg" data-v="${g.p - 1}" ${g.p <= 1 ? 'disabled' : ''} aria-label="Previous page">${ic('chevl', 14)} Previous</button>
+    ${pageList14(g.p, pages).map(v => v === '…' ? '<span class="pg-gap">…</span>' : `<button class="pg-n ${v === g.p ? 'on' : ''}" data-a="fpg" data-v="${v}" ${v === g.p ? 'aria-current="page"' : ''} aria-label="Page ${v}">${v}</button>`).join('')}
+    <button class="btn sm" data-a="fpg" data-v="${g.p + 1}" ${g.p >= pages ? 'disabled' : ''} aria-label="Next page">Next ${ic('chevr', 14)}</button></div></nav>`; }
+EXTRA.fpg = (t) => { const v = +t.dataset.v; if (v >= 1) { S.fpg.p = v; S.fcsel = null; } };
+document.addEventListener('change', (e) => { const t = e.target; if (t && t.id === 'fpgsize') { S.fpg.n = +t.value || 25; S.fpg.p = 1; S.fcsel = null; render(); } });
+
+function preview14(L) { try { return preview14x(L); } catch (e) { return ''; } }
+function preview14x(L) {
+  const page = pg14(L), x = page.find(z => z.c.id === S.fcsel) || page[0];
+  const tog = `<button class="iconbtn" data-a="fdockR" aria-label="Toggle preview">${ic(S.fdockR ? 'chevr' : 'chevl', 16)}</button><span class="vlabel">Preview</span>`;
+  if (!x) return `<aside class="dock right ${S.fdockR ? '' : 'closed'}" aria-label="Case preview"><div class="dock-head">${ic('file', 16)}<h3>Preview</h3>${tog}</div><div class="dock-body"><div class="fpv-empty">${ic('file', 28)}<b>Select a case</b><span>Select a row to see quick details about the case.</span></div></div></aside>`;
+  S.fcsel = x.c.id;
+  const c = x.c, j = jIdx14(x), ini = (c.first[0] + c.last[0]).toUpperCase(), aging = x.open && x.days > 10, last = (msgs14(c) || []).slice(-1)[0];
+  return `<aside class="dock right ${S.fdockR ? '' : 'closed'}" aria-label="Case preview"><div class="dock-head">${ic('file', 16)}<h3>Preview</h3><button class="btn sm primary x" data-a="fopencase" data-id="${c.id}" title="Open the full case">${ic('expand', 14)} Expand</button>${tog}</div>
+  <div class="dock-body">
+    <div style="display:flex;gap:10px;align-items:center"><span class="avatar" style="background:var(--green-50);color:var(--green-700);width:40px;height:40px">${ini}</span><div style="min-width:0"><div style="font:600 15px var(--f-head)">${esc(c.first)} ${esc(c.last)}</div><div class="muted" style="font-size:12.5px">DOB ${fmt(c.dob)} · <span class="mono">${GEHC(c.id)}</span> · ${esc(x.prod)}</div></div></div>
+    ${x.alert ? `<div class="pv14-alert">${ic('alert', 15)}<span><b>${esc(x.alert)}</b></span></div>` : ''}
+    <div class="section-t">Where it is</div>
+    <div class="fpv-j">${J14.map((l, i) => `<i class="${j < 0 ? '' : i < j ? 'done' : i === j ? 'on' : ''}" title="${esc(l)}"></i>`).join('')}</div>
+    <div class="fpv-jl">${j < 0 ? 'Cancelled' : j >= J14.length ? '<b>Scan administered</b>' : `<b>${esc(J14[j])}</b> <span class="muted">· step ${j + 1} of ${J14.length}</span>`}</div>
+    <div class="pv14-kv"><span class="lbl">Status</span><span><span class="fst ${x.open ? 'o' : 'c'}">${esc(x.status)}</span>${x.stage ? ` <span class="muted">${esc(x.stage)}</span>` : ''}</span>
+      <span class="lbl">In this status</span><span class="num ${aging ? 'aging' : ''}">${x.days} business day${x.days === 1 ? '' : 's'}</span>
+      <span class="lbl">Primary carrier</span><span>${esc(carrierOf(c))}</span>
+      <span class="lbl">Scan date</span><span>${c.sched ? `<span class="num">${esc(c.sched)}</span>` : '<span class="muted">Not set</span>'}</span></div>
+    <div class="section-t">Sites and team</div>
+    <div class="fields">${fld('Ordering office', x.office, false)}${fld('Scan facility', x.scan, false)}${fld('Case manager', c.owner && c.owner !== 'Unassigned' ? c.owner : 'Janet Mills', false)}${fld('FRM', x.frm.name, false)}</div>
+    ${last ? `<div class="section-t">Latest message</div><div class="pv14-msg"><div class="muted">${esc(last.by || '')}${last.role ? ' (' + esc(last.role) + ')' : ''}${last.when ? ' · ' + esc(last.when) : ''}</div><div>${esc(String(last.text || last.body || '').slice(0, 160))}${String(last.text || last.body || '').length > 160 ? '…' : ''}</div></div>` : ''}
+    <div class="fpv-act"><button class="btn primary" data-a="fopencase" data-id="${c.id}">${ic('expand', 16)} Expand to full view</button><button class="btn" data-a="fpdf14" data-id="${c.id}">${ic('download', 16)} Download PDF</button></div>
+  </div></aside>`; }
+
+
+/* ================= FRM V16: Add new message (type, subject, respond by, recipients, specific providers) ================= */
+FRM_VERSIONS.unshift(['f5', 'V16', 'Review round 15', 'Messages: Add new message window with Type (FYI or Action needed), Subject, Respond by, Message, Recipients (Patient Access Coordinator always included, Patient Advocate, Field Reimbursement Manager, Pharmacy) and Specific providers from the case\'s medical facility. Sent messages show type, subject, respond by and recipients, and cannot be edited or deleted. Hub case manager notes stay read only.']);
+const RCP16 = ['Patient Access Coordinator', 'Patient Advocate', 'Field Reimbursement Manager', 'Pharmacy'];
+function provs16(c) { const out = [], seen = new Set(), add = (n, r) => { if (n && !seen.has(n)) { seen.add(n); out.push({ name: n, role: r }); } };
+  if (c.prescriber) add(c.prescriber, 'Prescriber');
+  const f = (typeof FACILITIES !== 'undefined' ? FACILITIES : []).find(x => x.name === c.facility);
+  (f && f.users || []).forEach(u => add(u.name, u.role || 'Office staff'));
+  if (out.length < 3) { const h = hashId(c.id + 'pv16'), F = ['Monica', 'Derek', 'Alana', 'Tomas', 'Priya', 'Hannah', 'Luis', 'Grace'], L = ['Whitley', 'Okafor', 'Brennan', 'Castillo', 'Nguyen', 'Larsen', 'Moreno', 'Patel'];
+    add(`${F[h % 8]} ${L[(h >> 3) % 8]}`, 'Office manager'); add(`${F[(h >> 5) % 8]} ${L[(h >> 7) % 8]}`, 'Nurse coordinator'); }
+  return out; }
+/* seed messages carry type, subject and recipients */
+{ const _m = msgs14; msgs14 = function (c) { const L = _m(c); L.forEach((m, i) => { if (!m.subj) { m.subj = i % 2 ? 'Prior authorization' : 'Additional information needed'; m.type = i % 2 ? 'FYI' : 'Action needed'; m.to = m.role === 'FRM' ? ['Patient Access Coordinator'] : ['Field Reimbursement Manager']; m.prov = []; if (m.type === 'Action needed') m.by2 = fmt(addDays(TODAY, 3)); } }); return L; }; }
+
+function fmsgModal16(m, wrap) {
+  const c = cById(m.id), d = m.d, e = m.err || {}, P = provs16(c);
+  const typ = `<div class="input ${e.type ? 'err' : ''}"><span class="lbl">Type <span class="req">*</span></span><div class="rad16" role="radiogroup" aria-label="Type">${['FYI', 'Action needed'].map(t => `<label><input type="radio" name="m16type" data-a="m16type" data-v="${t}" ${d.type === t ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div>${e.type ? errField(e.type) : ''}</div>`;
+  const grid = `<div class="polgrid">${inp('m16subj', 'Subject', { req: 1, err: e.subj, opts: MSG_SUBJECTS, v: d.subj })}${inp('m16by', 'Respond by', { type: 'date', opt: 1, err: e.by, v: d.by, help: d.type === 'Action needed' ? 'The date you need an answer by' : '' })}</div>`;
+  const body = inp('m16body', 'Message', { area: 1, h: 120, req: 1, err: e.body, v: d.body, phText: 'For example, the office confirmed the scan for Tuesday' });
+  const rcp = `<div class="input"><span class="lbl">Recipients <span class="req">*</span></span><div class="chk16">${RCP16.map((r, i) => `<label class="${i ? '' : 'lock'}"><input type="checkbox" data-a="m16rcp" data-v="${r}" ${i === 0 || d.to.includes(r) ? 'checked' : ''} ${i ? '' : 'disabled'}><span>${r}${i ? '' : ' <em>Always included</em>'}</span></label>`).join('')}</div></div>`;
+  const sel = d.prov, pop = m.pop ? `<div class="rcppop" role="listbox" aria-multiselectable="true"><div class="rcplist"><div class="rcpg"><div class="rcpgh"><span>${esc(c.facility)}</span></div>${P.map(p => `<label class="rcprow"><input type="checkbox" data-a="m16prov" data-v="${esc(p.name)}" ${sel.includes(p.name) ? 'checked' : ''}><span class="avatar sm">${p.name.replace('Dr. ', '').split(' ').map(x => x[0]).join('').slice(0, 2)}</span><span class="rcpn"><b>${esc(p.name)}</b><span>${esc(p.role)}</span></span></label>`).join('')}</div></div><div class="rcpfoot"><span class="muted">${sel.length} selected</span><button class="btn sm primary" data-a="m16pop">Done</button></div></div>` : '';
+  const chips = sel.map(n => `<span class="rchip"><b>${esc(n)}</b><button data-a="m16prov" data-v="${esc(n)}" aria-label="Remove ${esc(n)}">${ic('x', 12)}</button></span>`).join('');
+  const prov = `<div class="input"><span class="lbl">Specific providers <span class="optl">Optional</span></span><button class="rcpbtn ${m.pop ? 'open' : ''}" data-a="m16pop" aria-expanded="${!!m.pop}"><span>${sel.length ? `${sel.length} selected` : 'Choose medical facility users on this case'}</span>${ic('chevd', 16)}</button>${pop}${chips ? `<div class="rchips">${chips}</div>` : ''}<span class="help">Users at ${esc(c.facility)} associated with this case.</span></div>`;
+  return wrap('Add new message', typ + grid + body + rcp + prov, `<button class="btn" data-a="mclose">Cancel</button><button class="btn primary" data-a="m16send">${ic('send', 16)} Send message</button>`);
+}
+{ const _x = extraModal; extraModal = function (m, wrap) { if (m && m.type === 'fmsg16') return fmsgModal16(m, wrap); return _x(m, wrap); }; }
+const m16keep = () => { const m = S.modal; if (!m || m.type !== 'fmsg16') return; const g = (id) => { const el = document.getElementById(id); return el ? el.value : undefined; };
+  const s = g('m16subj'), b = g('m16by'), t = g('m16body'); if (s !== undefined) m.d.subj = s; if (b !== undefined) m.d.by = b; if (t !== undefined) m.d.body = t; };
+Object.assign(EXTRA, {
+  fmsg16(t) { S.modal = { type: 'fmsg16', id: t.dataset.id, d: { type: '', subj: '', by: '', body: '', to: [], prov: [] }, err: {} }; },
+  m16type(t) { m16keep(); S.modal.d.type = t.dataset.v; delete S.modal.err.type; },
+  m16rcp(t) { m16keep(); const L = S.modal.d.to, v = t.dataset.v; S.modal.d.to = L.includes(v) ? L.filter(x => x !== v) : [...L, v]; },
+  m16pop() { m16keep(); S.modal.pop = !S.modal.pop; },
+  m16prov(t) { m16keep(); const L = S.modal.d.prov, v = t.dataset.v; S.modal.d.prov = L.includes(v) ? L.filter(x => x !== v) : [...L, v]; },
+  m16send() { m16keep(); const m = S.modal, d = m.d, e = {};
+    if (!d.type) e.type = 'Choose FYI or Action needed'; if (!d.subj) e.subj = 'Choose a subject'; if (!String(d.body || '').trim()) e.body = 'Write a message before sending';
+    if (d.by && d.by < isoOf(fmt(TODAY))) e.by = 'Choose today or a later date';
+    m.err = e; if (Object.keys(e).length) return;
+    const c = cById(m.id), to = ['Patient Access Coordinator', ...d.to.filter(x => x !== 'Patient Access Coordinator')];
+    msgs14(c).push({ by: frmMe().name, role: 'FRM', when: nowStamp14(), text: d.body.trim(), type: d.type, subj: d.subj, by2: d.by ? usOf(d.by) : '', to, prov: d.prov.slice() });
+    S.modal = null; S.fctab = 'msgs'; toast('Message sent'); }
+});
+/* Messages tab: list with type, subject, respond by and recipients; compose opens the window */
+{ const _cv = ROUTES_X['f-case']; ROUTES_X['f-case'] = () => { let h = _cv(); if ((S.fctab || 'details') !== 'msgs') return h; const c = cById(S.fcaseId); if (!c) return h; const M = msgs14(c);
+  const list = M.length ? `<div class="fcnotes">${M.map(n => `<div class="fcnote ${n.role === 'FRM' ? 'frm' : ''}"><div class="fcn-h"><b>${esc(n.by)}</b><span class="frtag">${esc(n.role)}</span>${n.type ? `<span class="pill ${n.type === 'Action needed' ? 't-warn' : 't-neutral'}">${esc(n.type)}</span>` : ''}<span class="muted num">${esc(n.when)}</span></div>
+    ${n.subj ? `<div class="m16subj"><b>${esc(n.subj)}</b>${n.by2 ? `<span class="muted">Respond by <span class="num">${esc(n.by2)}</span></span>` : ''}</div>` : ''}<p>${esc(n.text)}</p>
+    ${n.to && n.to.length ? `<div class="m16to muted">To: ${esc([...n.to, ...(n.prov || [])].join(', '))}</div>` : ''}</div>`).join('')}</div>`
+    : `<div class="fempty sm">${ic('chat', 26)}<b>No messages yet</b><span>Send the first message to the case team.</span><button class="btn primary" data-a="fmsg16" data-id="${c.id}">${ic('plus', 16)} Add new message</button></div>`;
+  const sec = `<section class="card"><div class="card-h"><h2>Messages <span class="count">${M.length}</span></h2><span class="muted" style="font-size:12.5px">Messages cannot be edited or deleted once sent.</span><span style="flex:1"></span><button class="btn primary" data-a="fmsg16" data-id="${c.id}">${ic('plus', 16)} Add new message</button></div>${list}</section>`;
+  return h.replace(/<section class="card"><div class="card-h"><h2>Messages <span class="count">[\s\S]*?<\/div><\/div><\/section>/, sec); }; }
 
 window.HP_START = () => render();
