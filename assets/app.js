@@ -5064,7 +5064,7 @@ const NOTES_V12 = {
 /* ================= HCP Portal V3: Branding ================= */
 HCP_VERSIONS.unshift(['p3', 'V3', 'Branding', 'Settings has a Branding section where a facility administrator picks the portal color and uploads the practice logo. The logo replaces the HealthPacer logo at the left of the top bar, and a smaller HealthPacer logo sits at the right, where the Hub and HCP Portal switch used to be. The switch is in the avatar menu']);
 S.hver = 'p3'; try { const v = localStorage.getItem('hp-hver'), L = localStorage.getItem('hp-hver-latest'); if (v && L === HCP_VERSIONS[0][0] && HCP_VERSIONS.some(x => x[0] === v)) S.hver = v; } catch (e) { }
-const isP3 = () => isHCP() && S.hver === 'p3';
+const isP3 = () => isHCP() && ['p3', 'p4'].includes(S.hver);
 HROUTES.push('h-settings');
 let HLOGO = ''; try { HLOGO = localStorage.getItem('hp-hcplogo') || ''; } catch (e) { }
 const saveLogo = (v) => { HLOGO = v; try { v ? localStorage.setItem('hp-hcplogo', v) : localStorage.removeItem('hp-hcplogo'); } catch (e) { } };
@@ -6597,5 +6597,181 @@ Object.assign(EXTRA, {
 { const _a = EXTRA.adddocsave; EXTRA.adddocsave = function (t, e) { const before = DOCS.length, r = _a(t, e); const c = byId(S.caseId);
   if (DOCS.length > before && c && t.dataset.v !== 'fac') { const x = DOCS[0]; docs14(c).unshift({ uid: 'd' + (++UID17), name: x[0], cat: x[1], date: x[2], by: x[3], role: 'Hub case manager', size: x[4] }); } return r; }; }
 { const _r = render; render = function () { const out = _r.apply(this, arguments); try { if (!isFRM() && !isHCP() && S.route === 'case') { const c = byId(S.caseId), n = c && D14[c.id] ? D14[c.id].filter(d => d.role === 'FRM').length : 0, el = document.querySelector('[data-a="tab"][data-v="docs"] .n'); if (n && el) el.textContent = DOCS.length + n; } } catch (e) { } return out; }; }
+
+
+/* ================= Branding tab in Settings for the Hub, HCP Portal and FRM Workspace (logo + color + custom hex) ================= */
+const BRMOD = () => isHCP() ? 'hcp' : isFRM() ? 'frm' : 'hub';
+const BRNAME = { hub: 'the Hub', hcp: 'the portal', frm: 'the workspace' };
+const BR18 = { hub: { hue: 'green', hex: '', logo: '' }, hcp: { hue: 'blue', hex: '' }, frm: { hue: 'green', hex: '' } };
+try { Object.keys(BR18).forEach(k => { const v = JSON.parse(localStorage.getItem('hp-brand-' + k) || 'null'); if (v) Object.assign(BR18[k], v); });
+  if (!localStorage.getItem('hp-brand-hcp')) { const h = localStorage.getItem('hp-hcphue'); if (h && HUES.some(x => x[0] === h)) BR18.hcp.hue = h; } } catch (e) { }
+const brSave18 = (m) => { try { localStorage.setItem('hp-brand-' + m, JSON.stringify(BR18[m])); } catch (e) { toast('This browser could not save the branding'); } };
+const brLogo18 = (m) => m === 'hcp' ? HLOGO : m === 'frm' ? FLOGO : BR18.hub.logo;
+const brSetLogo18 = (m, v) => { if (m === 'hcp') saveLogo(v); else if (m === 'frm') saveFLogo(v); else { BR18.hub.logo = v; brSave18('hub'); } };
+const brCan18 = (m) => m !== 'hcp' || hAdmin();
+const geOn18 = () => { try { return !!GE16.on; } catch (e) { return false; } };
+const normHex18 = (s) => { let v = String(s || '').trim().replace(/^#/, ''); if (/^[0-9a-f]{3}$/i.test(v)) v = v.split('').map(c => c + c).join(''); return /^[0-9a-f]{6}$/i.test(v) ? '#' + v.toUpperCase() : ''; };
+const lum18 = (hex) => { const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+const lightInk18 = (hex) => { const L = lum18(hex); return (L + 0.05) / 0.062 > 1.05 / (L + 0.05); }; /* true: dark text reads better than white */
+const darker18 = (hex, f) => '#' + [1, 3, 5].map(i => Math.round(parseInt(hex.slice(i, i + 2), 16) * f).toString(16).padStart(2, '0')).join('');
+function brandVars18() { const html = document.documentElement, b = BR18[BRMOD()], on = !!b.hex && !geOn18(), st = html.style;
+  html.classList.toggle('brand-custom', on);
+  if (!on) { ['--brand', '--brand-2', '--brand-ink', '--brand-ink2', '--brand-hover'].forEach(k => st.removeProperty(k)); html.classList.remove('brand-light'); return; }
+  const light = lightInk18(b.hex); html.classList.toggle('brand-light', light);
+  st.setProperty('--brand', b.hex); st.setProperty('--brand-2', darker18(b.hex, .88)); st.setProperty('--brand-ink', light ? '#1b2530' : '#ffffff');
+  st.setProperty('--brand-ink2', light ? 'rgba(27,37,48,.72)' : 'rgba(255,255,255,.8)'); st.setProperty('--brand-hover', light ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.12)'); }
+{ const _h = applyHue; applyHue = function () { const m = BRMOD(), b = BR18[m]; if (!(m === 'hub' && isV1())) S.hue = b.hex ? 'green' : (HUES.some(x => x[0] === b.hue) ? b.hue : 'green'); _h(); brandVars18(); }; }
+
+/* Top bar: an uploaded logo takes the main spot; the HealthPacer logo moves next to the avatar at 80% size */
+function post18() { const m = BRMOD(), html = document.documentElement, body = document.body; brandVars18();
+  if (html.classList.contains('brand-custom')) body.classList.remove('theme-modern', 'theme-green', 'green-both', 'nav-white');
+  if (geOn18()) return;
+  const bar = document.querySelector('.topnav') || document.querySelector('.sidenav'); if (!bar) return;
+  bar.querySelectorAll('.hpsmall').forEach(e => e.remove());
+  const lg = brLogo18(m), co = !!lg || (m === 'hcp' && isP3());
+  if (lg && m === 'hub') { const L = document.querySelector('.topnav .logo, .sidenav .brand .logo'); if (L) L.outerHTML = `<span class="praclogo"><img src="${lg}" alt="Company logo"></span>`; }
+  if (co) { const a = document.querySelector('.util .acctwrap'); if (a) a.insertAdjacentHTML('beforebegin', `<span class="hpsmall hp18" title="Powered by HealthPacer">${logo(true)}</span>`); } }
+{ const _r = render; render = function () { const out = _r.apply(this, arguments); try { post18(); } catch (e) { } return out; }; }
+
+/* The Branding panel, shared by all three Settings pages */
+function brandPanel18(m) { const b = BR18[m], lg = brLogo18(m), can = brCan18(m), dis = can ? '' : 'disabled', E = S.br18err || '';
+  const cur = b.hex ? b.hex : (HUES.find(x => x[0] === b.hue) || HUES[0])[2], draft = S.br18draft != null ? S.br18draft : (b.hex || '');
+  const pv = normHex18(draft) || b.hex || '#3D714E';
+  const sw = HUES.map(([k, l, c]) => { const on = !b.hex && b.hue === k; return `<button class="cswatch ${on ? 'on' : ''}" ${can ? `data-a="br18hue" data-v="${k}"` : 'disabled'} aria-pressed="${on}"><i style="background:linear-gradient(135deg,${c},color-mix(in srgb,${c} 55%,#000))"></i><span>${l}</span>${on ? ic('check', 14) : ''}</button>`; }).join('')
+    + `<button class="cswatch ${b.hex ? 'on' : ''}" ${can ? 'data-a="br18custom"' : 'disabled'} aria-pressed="${!!b.hex}"><i style="background:${b.hex || 'conic-gradient(#e0565b,#f2c14e,#4fae6b,#3f86c8,#8b5fbf,#e0565b)'}"></i><span>Custom</span>${b.hex ? ic('check', 14) : ''}</button>`;
+  const who = m === 'hcp' ? `Everyone at ${esc(HCP_FAC.name)}` : m === 'frm' ? 'Every FRM in your company' : 'Everyone using the Hub';
+  const custom = `<div class="br18c ${b.hex || S.br18open ? 'open' : ''}">
+      <label class="lbl" for="br18hex">Custom color</label>
+      <div class="br18row"><span class="br18chip" style="background:${pv}"></span><input id="br18hex" class="mono" value="${esc(draft)}" placeholder="#7A1F5C" maxlength="7" ${dis} aria-describedby="br18help" autocomplete="off" spellcheck="false"><label class="br18pick" title="Pick a color">${ic('edit', 15)}<input type="color" id="br18color" value="${pv.toLowerCase()}" ${dis} aria-label="Pick a color"></label><button class="btn primary sm" data-a="br18apply" ${dis}>Apply</button></div>
+      ${E ? `<span class="errmsg">${ic('alert', 13)} ${esc(E)}</span>` : ''}
+      <div class="br18how" id="br18help"><b>How custom colors work</b><p>Your color fills the top navigation bar and the main action buttons. Everything below the bar switches to a calm white and light gray palette, so tables, status labels and text stay easy to read with any color.</p><p>Text on your color turns white or dark automatically, whichever reads better. Enter a 6-digit hex code, for example #7A1F5C.</p></div></div>`;
+  const ini = { hub: 'JM', hcp: 'TA', frm: 'PV' }[m];
+  const prevBar = `<div class="bp18 ${b.hex && lightInk18(b.hex) ? 'light' : ''}" style="--pv:${cur}"><div class="bp18-bar">${lg ? `<span class="praclogo sm"><img src="${lg}" alt=""></span>` : m === 'hcp' ? `<span class="praclogo sm empty"><b>${esc(HCP_FAC.name)}</b></span>` : `<span class="bp18-hp">${logo(true)}</span>`}<span class="bp-nav"><i></i><i></i><i></i></span><span style="flex:1"></span>${lg || m === 'hcp' ? `<span class="hpsmall hp18">${logo(true)}</span>` : ''}<span class="avatar">${ini}</span></div>
+    <div class="bp18-body ${b.hex ? 'neutral' : ''}"><div class="bp18-rows"><i></i><i></i><i></i><i></i></div><span class="bp18-btn">Primary action</span></div></div>`;
+  return `${can ? '' : `<div class="note-banner">${ic('info', 16)}<span>Only a facility administrator can change branding. You are viewing as ${esc((S.hrole || '').toLowerCase())}.</span></div>`}
+    <section class="card"><div class="card-h"><h2>Logo</h2></div><div class="card-b">
+      <div class="logorow"><div class="logoprev">${lg ? `<img src="${lg}" alt="Current logo">` : `<span class="muted">No logo yet. ${m === 'hcp' ? 'The practice name shows instead.' : 'The HealthPacer logo shows instead.'}</span>`}</div>
+        <div class="logoacts">${can ? `<label class="btn">${ic('upload', 16)} ${lg ? 'Replace logo' : 'Upload logo'}<input type="file" id="br18logo" accept="image/png,image/jpeg,image/svg+xml" hidden></label>${lg ? `<button class="btn ghost danger-t" data-a="br18logorm">Remove</button>` : `<button class="btn ghost" data-a="br18logosample">Use a sample logo</button>`}` : ''}
+        <span class="muted" style="font-size:12.5px">PNG, JPG or SVG, up to 500 KB. Your logo takes the main spot at the top left, and the HealthPacer logo moves next to the profile picture at a smaller size.</span></div></div></div></section>
+    <section class="card"><div class="card-h"><h2>Color</h2><span class="muted" style="font-size:12.5px">${b.hex ? `Custom ${esc(b.hex)}` : esc((HUES.find(x => x[0] === b.hue) || HUES[0])[1])}</span></div><div class="card-b"><div class="setsw">${sw}</div>${custom}</div></section>
+    <section class="card"><div class="card-h"><h2>Preview</h2></div><div class="card-b">${prevBar}<p class="muted" style="font-size:12.5px;margin:10px 0 0">${who} sees this logo and color in ${BRNAME[m]}.</p></div></section>`; }
+
+/* Hub Settings: Branding section */
+{ const _s = ROUTES_X.settings; ROUTES_X.settings = () => { const sec = S.detail.set || 'profile'; let h = _s();
+  h = h.replace(/(<button data-a="setsec" data-v="look"[^>]*>[\s\S]*?<\/button>)/, `$1<button data-a="setsec" data-v="brand" aria-current="${sec === 'brand'}">${ic('star', 16)} Branding</button>`);
+  if (sec === 'brand') h = h.replace(/<section class="card"><\/section>/, `<div class="setmain">${brandPanel18('hub')}</div>`);
+  return h; }; }
+/* HCP Portal Settings */
+ROUTES_X['h-settings'] = () => `<div class="page"><div class="pagehead"><div><h1>Settings</h1><div class="muted" style="font-size:13px">Portal settings for ${esc(HCP_FAC.name)}</div></div></div>
+  <div class="setgrid"><nav class="card setnav" aria-label="Settings sections"><button class="on">${ic('star', 16)} Branding</button><button data-a="go" data-r="h-profile">${ic('users', 16)} My profile</button></nav>
+  <div class="setmain">${brandPanel18('hcp')}</div></div></div>`;
+/* FRM Workspace Settings: Branding, Notifications and Appearance tabs */
+{ const _f = ROUTES_X['f-settings']; ROUTES_X['f-settings'] = () => { const all = _f(), t = S.fset18 || 'brand';
+  const card = (name) => { const m = all.match(new RegExp(`<section class="card"><div class="card-h"><h2>${name}</h2>[\\s\\S]*?</section>`)); return m ? m[0] : ''; };
+  const tabs = [['brand', 'Branding', 'star'], ['notif', 'Notifications', 'bell'], ['look', 'Appearance', 'grid']];
+  const body = t === 'notif' ? card('Notifications') : t === 'look' ? card('Appearance') : `<div class="note-banner">${ic('info', 16)}<span>In the full product only a workspace administrator would change branding. Everyone can change it in this prototype.</span></div>${brandPanel18('frm')}`;
+  return `<div class="page"><div class="pagehead"><div><h1>Settings</h1><div class="muted" style="font-size:13px">Workspace settings for your company</div></div></div>
+  <div class="setgrid"><nav class="card setnav" aria-label="Settings sections">${tabs.map(([k, l, i]) => `<button class="${t === k ? 'on' : ''}" data-a="fset18" data-v="${k}" aria-current="${t === k}">${ic(i, 16)} ${l}</button>`).join('')}</nav><div class="setmain">${body}</div></div></div>`; }; }
+
+const brApplyHex18 = () => { const m = BRMOD(); if (!brCan18(m)) return; const el = document.getElementById('br18hex'), raw = el ? el.value : S.br18draft, hx = normHex18(raw);
+  if (!hx) { S.br18draft = raw || ''; S.br18err = 'Enter a hex code like #7A1F5C (6 digits, 0 to 9 and A to F)'; return; }
+  BR18[m].hex = hx; S.br18draft = null; S.br18err = ''; brSave18(m); applyHue(); toast(`Custom color ${hx} applied`); };
+Object.assign(EXTRA, {
+  fset18(t) { S.fset18 = t.dataset.v; },
+  br18hue(t) { const m = BRMOD(); if (!brCan18(m)) return; BR18[m].hue = t.dataset.v; BR18[m].hex = ''; S.br18draft = null; S.br18err = ''; S.br18open = false; brSave18(m); if (m === 'hcp') { try { localStorage.setItem('hp-hcphue', t.dataset.v); } catch (e) { } } applyHue(); toast(`${(HUES.find(x => x[0] === t.dataset.v) || [0, 'Color'])[1]} applied`); },
+  br18custom() { S.br18open = true; setTimeout(() => { const el = document.getElementById('br18hex'); if (el) el.focus(); }, 30); },
+  br18apply() { brApplyHex18(); },
+  br18logosample() { const m = BRMOD(); if (!brCan18(m)) return; brSetLogo18(m, m === 'hcp' ? sampleLogo() : m === 'frm' ? sampleFLogo() : sampleHubLogo18()); toast('Sample logo added'); },
+  br18logorm() { const m = BRMOD(); if (!brCan18(m)) return; brSetLogo18(m, ''); toast('Logo removed'); }
+});
+function sampleHubLogo18() { const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="64" viewBox="0 0 300 64"><rect x="4" y="10" width="44" height="44" rx="10" fill="#0f5c63"/><path d="M15 33h8l4-9 6 18 4-9h8" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text x="60" y="31" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#1f2a37">Sample Health</text><text x="60" y="50" font-family="Arial,sans-serif" font-size="11" letter-spacing="3" fill="#5b6b7b">PATIENT SERVICES</text></svg>`;
+  return 'data:image/svg+xml;base64,' + btoa(svg); }
+document.addEventListener('change', (e) => { const t = e.target;
+  if (t.id === 'br18color') { const el = document.getElementById('br18hex'); S.br18draft = t.value.toUpperCase(); if (el) el.value = S.br18draft; brApplyHex18(); render(); return; }
+  if (t.id !== 'br18logo' || !t.files || !t.files[0]) return; const f = t.files[0], m = BRMOD();
+  if (!/\.(png|jpe?g|svg)$/i.test(f.name)) { toast('Use a PNG, JPG or SVG file.'); return; }
+  if (f.size > 500 * 1024) { toast('That file is over 500 KB. Try a smaller logo.'); return; }
+  const r = new FileReader(); r.onload = () => { brSetLogo18(m, String(r.result)); toast('Logo updated'); render(); }; r.readAsDataURL(f); });
+document.addEventListener('input', (e) => { if (e.target.id !== 'br18hex') return; S.br18draft = e.target.value; const hx = normHex18(e.target.value), chip = document.querySelector('.br18chip'); if (hx && chip) chip.style.background = hx; if (S.br18err && hx) { S.br18err = ''; const er = document.querySelector('.br18c .errmsg'); if (er) er.remove(); } });
+document.addEventListener('keydown', (e) => { if (e.target && e.target.id === 'br18hex' && e.key === 'Enter') { e.preventDefault(); brApplyHex18(); render(); } });
+{ const _g = EXTRA.go; if (_g) EXTRA.go = function (t, e) { S.br18err = ''; S.br18draft = null; return _g(t, e); }; }
+applyHue(); 
+
+/* ================= FRM V18: outbound fax (recipient dropdown, document order, optional cover sheet, Outbound faxes log) + journey labels ================= */
+FRM_VERSIONS.unshift(['f7', 'V18', 'Review round 17', 'Fax documents in three steps: one recipient list (imaging facility, ordering facility or prescriber) that fills the name and fax number, both editable; choose and reorder the documents; optional cover sheet with To, Fax, From, Regarding and Date, an optional message on top and the confidentiality notice at the bottom. Outbound faxes tab with Date (and sender), Recipient (and fax number), Type, Error and Status, moving from Pending to Sending to Delivered or Failed. The journey tracker shows Order as Complete with PA approved, with the scan status under it.']);
+const fmtFax18 = (s) => { const n = digits10(s); return n.length === 10 ? `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}` : s; };
+const pagesOf18 = (d) => /appeal|packet|clinical|notes/i.test(d.name) ? 4 : 2;
+const RCP18 = (c) => { const x = fx13(c); return [['scan', 'Imaging facility', x.scan, faxFor(x.scan, 's')], ['office', 'Ordering facility', c.facility, faxFor(c.facility, 'o')], ['presc', 'Prescriber', c.prescriber || 'Prescriber', faxFor((c.prescriber || '') + c.facility, 'p')]]; };
+/* Outbound fax history: Hub faxes on the case plus faxes sent from the FRM Workspace */
+function fxl18(c) { const L = faxes14(c); if (L.seed18) return L; L.seed18 = true; const h = hashId(c.id + 'fx18'), cm = c.owner && c.owner !== 'Unassigned' ? c.owner : 'Janet Mills', st = c.start || addDays(TODAY, -40), x = fx13(c);
+  if (h % 3 !== 0) L.push({ when: stamp14(addDays(st, 10), 10, 24), to: c.facility, fax: faxFor(c.facility, 'o'), type: 'PA form', docs: ['PA form for signature'], pages: 3, status: 'Delivered', error: '', by: cm, role: 'Hub case manager', cover: true });
+  if (h % 4 === 1) L.unshift({ when: stamp14(addDays(st, 14), 15, 2), to: x.scan, fax: faxFor(x.scan, 's'), type: 'Case document', docs: ['Referral_form_signed.pdf'], pages: 3, status: 'Failed', error: 'Busy signal after 3 attempts', by: cm, role: 'Hub case manager', cover: true });
+  return L; }
+function journeySub18(x) { return x.status === 'Cancelled' ? '' : ['No admin', 'Unknown admin'].includes(x.status) ? x.status : x.status === 'Admin' ? 'Administered' : ''; }
+{ const _j = journey14; journey14 = function (x) { let h = _j(x); const sub = journeySub18(x);
+  return h.replace(/(<span class="jr-l">Order<\/span>)/, `$1<span class="jr-sub">Complete, PA approved${sub && sub !== 'Administered' ? ` · <b>${esc(sub)}</b>` : ''}</span>`); }; }
+
+/* Fax drawer */
+const keep18 = () => { const d = S.drawer; if (!d || d.type !== 'ffax18') return; const R = d.r, g = (id) => { const el = document.getElementById(id); return el ? el.value : undefined; };
+  [['ffname', 'name'], ['ffattn', 'attn'], ['fffax', 'fax'], ['ffre', 're'], ['ffmsg', 'msg']].forEach(([id, k]) => { const v = g(id); if (v !== undefined) R[k] = v; }); };
+{ const _d = drawer; drawer = function () { const d = S.drawer; if (!d || d.type !== 'ffax18') return _d();
+  const c = cById(d.id), D = docs14(c), e = d.err || {}, st = d.step || 0, R = d.r, enter = LAST_DRAWER !== 'ffax18' + d.id && !LAST_DRAWER;
+  const shell = (body, foot) => `<div class="drawer-scrim ${enter ? 'enter' : ''}" data-a="drawerclose"></div><aside class="drawer wide14 ${enter ? 'enter' : ''}" role="dialog" aria-label="Fax documents"><div class="drawer-h"><h2>Fax documents</h2><button class="iconbtn" data-a="drawerclose" aria-label="Close">${ic('x', 18)}</button></div><div class="drawer-b">${body}</div><div class="drawer-f">${foot}</div></aside>`;
+  const steps = `<ol class="mstepper">${['Recipient', 'Documents', 'Cover sheet', 'Review'].map((s, i) => `<li class="${i < st ? 'done' : i === st ? 'on' : ''}"><span>${i < st ? ic('check', 12) : i + 1}</span>${s}</li>`).join('')}</ol>`;
+  const back = st ? `<button class="btn" data-a="ff18step" data-v="-1">${ic('chevl', 16)} Back</button>` : `<button class="btn" data-a="drawerclose">Cancel</button>`;
+  if (st === 0) { const O = RCP18(c);
+    return shell(`${steps}<div class="input ${e.src ? 'err' : ''}"><label class="lbl" for="ff18src">Send to <span class="req">*</span></label><select id="ff18src"><option value="">Choose a recipient</option>${O.map(([k, l, n, f]) => `<option value="${k}" ${R.src === k ? 'selected' : ''}>${esc(l)}: ${esc(n)} · ${esc(f)}</option>`).join('')}</select>${e.src ? errField(e.src) : ''}<span class="help">The name and fax number fill in from the case. You can change either one before sending.</span></div>
+      ${inp('ffname', 'Recipient name', { req: 1, err: e.name, v: R.name })}${inp('ffattn', 'Attention', { opt: 1, v: R.attn, phText: 'For example, billing team' })}${inp('fffax', 'Fax number', { req: 1, err: e.fax, v: R.fax, phText: '(999) 999-9999', help: 'Ten digits. US numbers only.' })}`,
+      `${back}<span style="flex:1"></span><button class="btn primary" data-a="ff18step" data-v="1">Continue ${ic('chevr', 16)}</button>`); }
+  if (st === 1) { const sel = R.docs.map(u => D.find(x => x.uid === u)).filter(Boolean), pages = sel.reduce((n, x) => n + pagesOf18(x), 0);
+    const pick = D.length ? D.map(x => `<label class="opt ff18o"><input type="checkbox" data-a="ff18doc" data-v="${x.uid}" ${R.docs.includes(x.uid) ? 'checked' : ''}><span><b>${esc(x.name)}</b> <span class="muted">${esc(x.cat)} · ${extOf(x.name)}</span></span></label>`).join('') : '<span class="muted">This case has no documents yet. Upload one on the Documents tab first.</span>';
+    const order = sel.length ? `<ol class="ff18ord">${sel.map((x, i) => `<li><span class="n num">${i + 1}</span><span class="nm">${esc(x.name)}<span class="muted">${pagesOf18(x)} pages</span></span><button class="iconbtn" data-a="ff18mv" data-v="${x.uid}" data-d="-1" ${i ? '' : 'disabled'} aria-label="Move ${esc(x.name)} up">${ic('chevu', 15)}</button><button class="iconbtn" data-a="ff18mv" data-v="${x.uid}" data-d="1" ${i < sel.length - 1 ? '' : 'disabled'} aria-label="Move ${esc(x.name)} down">${ic('chevd', 15)}</button><button class="iconbtn" data-a="ff18doc" data-v="${x.uid}" aria-label="Remove ${esc(x.name)}">${ic('x', 15)}</button></li>`).join('')}</ol><span class="muted" style="font-size:12.5px">${sel.length} document${sel.length === 1 ? '' : 's'} · ${pages} pages, sent in this order</span>` : `<div class="ff18none">Choose documents above. They are faxed in the order you set here.</div>`;
+    return shell(`${steps}<div class="input ${e.docs ? 'err' : ''}"><span class="lbl">Documents to send <span class="req">*</span></span><div class="fcks">${pick}</div>${e.docs ? `<span class="errmsg">${ic('alert', 13)} ${e.docs}</span>` : ''}</div>
+      <div class="input"><span class="lbl">Fax order</span>${order}</div>`,
+      `${back}<span style="flex:1"></span><button class="btn primary" data-a="ff18step" data-v="1">Continue ${ic('chevr', 16)}</button>`); }
+  const sel = R.docs.map(u => D.find(x => x.uid === u)).filter(Boolean), pages = sel.reduce((n, x) => n + pagesOf18(x), 0) + (R.cover ? 1 : 0);
+  const sheet = R.cover ? `<div class="cs18" aria-label="Cover sheet preview"><div class="cs18-h"><b>FAX</b><span>${esc(FORG || 'HealthPacer')}</span></div>
+      <div class="cs18-g"><span>To:</span><b>${esc(R.name)}${R.attn ? `, attn: ${esc(R.attn)}` : ''}</b><span>Fax:</span><b>${esc(fmtFax18(R.fax))}</b><span>From:</span><b>${esc(frmMe().name)}, Field Reimbursement Manager</b><span>Regarding:</span><b>${esc(R.re)}</b><span>Date:</span><b>${fmt(TODAY)}</b><span>Pages:</span><b>${pages} including this page</b></div>
+      ${R.msg ? `<div class="cs18-m">${esc(R.msg).replace(/\n/g, '<br>')}</div>` : '<div class="cs18-m empty">Your message appears here.</div>'}
+      <p class="cs18-d"><b>Confidentiality notice:</b> This fax contains confidential and privileged information, including protected health information, intended only for the recipient named above. If you received it in error, notify the sender right away and destroy all copies. Any review, use, disclosure or distribution by others is prohibited.</p></div>` : `<div class="ff18none">No cover sheet. The documents are sent on their own.</div>`;
+  if (st === 2) return shell(`${steps}<label class="setrow ff18tog"><span><b>Include a cover sheet</b><span class="muted">Generic fax cover sheet with To, Fax, From, Regarding and Date, and the confidentiality notice at the bottom</span></span><input type="checkbox" class="switch" data-a="ff18cover" ${R.cover ? 'checked' : ''}></label>
+    ${R.cover ? `${inp('ffre', 'Regarding', { v: R.re })}${inp('ffmsg', 'Message', { opt: 1, area: 1, h: 90, v: R.msg, phText: 'Printed at the top of the cover sheet' })}` : `<div class="ff18none">No cover sheet. The documents are sent on their own, so there is no place for a message.</div>`}`,
+    `${back}<span style="flex:1"></span><button class="btn primary" data-a="ff18step" data-v="1">Review ${ic('chevr', 16)}</button>`);
+  return shell(`${steps}<div class="ff18sum"><span><b>${esc(R.name)}</b>${R.attn ? `, attn: ${esc(R.attn)}` : ''} · ${esc(fmtFax18(R.fax))}</span><span>${sel.length} document${sel.length === 1 ? '' : 's'} · ${pages} pages</span></div>
+    <div class="input"><span class="lbl">Fax order</span><ol class="ff18ord ro">${R.cover ? '<li><span class="n num">1</span><span class="nm">Cover sheet<span class="muted">1 page</span></span></li>' : ''}${sel.map((x, i) => `<li><span class="n num">${i + 1 + (R.cover ? 1 : 0)}</span><span class="nm">${esc(x.name)}<span class="muted">${pagesOf18(x)} pages</span></span></li>`).join('')}</ol></div>
+    ${R.cover ? `<div class="input"><span class="lbl">Cover sheet preview</span>${sheet}</div>` : ''}`,
+    `${back}<span style="flex:1"></span><button class="btn primary" data-a="ff18send">${ic('send', 16)} Send fax</button>`); }; }
+
+Object.assign(EXTRA, {
+  ffax14(t) { const c = cById(t.dataset.id); S.drawer = { type: 'ffax18', id: c.id, step: 0, err: {}, r: { src: '', name: '', attn: '', fax: '', docs: [], cover: true, msg: '', re: `Case ${GEHC(c.id)} · ${prodOf(c)}` } }; },
+  ff18step(t) { keep18(); const d = S.drawer, R = d.r, dir = +t.dataset.v, e = {};
+    if (dir > 0 && d.step === 0) { if (!R.name.trim()) e.name = 'Enter the recipient name'; if (digits10(R.fax).length !== 10) e.fax = 'Enter a 10-digit fax number'; }
+    if (dir > 0 && d.step === 1 && !R.docs.length) e.docs = 'Choose at least one document';
+    d.err = e; if (Object.keys(e).length) return; d.step = Math.max(0, Math.min(3, d.step + dir)); },
+  ff18doc(t) { keep18(); const R = S.drawer.r, u = t.dataset.v; R.docs = R.docs.includes(u) ? R.docs.filter(x => x !== u) : [...R.docs, u]; S.drawer.err = {}; },
+  ff18mv(t) { const R = S.drawer.r, i = R.docs.indexOf(t.dataset.v), j = i + (+t.dataset.d); if (i < 0 || j < 0 || j >= R.docs.length) return; [R.docs[i], R.docs[j]] = [R.docs[j], R.docs[i]]; },
+  ff18cover(t) { keep18(); S.drawer.r.cover = !S.drawer.r.cover; },
+  ff18send() { keep18(); const d = S.drawer, R = d.r, c = cById(d.id), D = docs14(c), sel = R.docs.map(u => D.find(x => x.uid === u)).filter(Boolean);
+    const pages = sel.reduce((n, x) => n + pagesOf18(x), 0) + (R.cover ? 1 : 0);
+    const f = { when: nowStamp14(), to: R.name.trim(), attn: R.attn, fax: fmtFax18(R.fax), type: 'Case document', docs: sel.map(x => x.name), pages, status: 'Pending', error: '', by: frmMe().name, role: 'FRM', cover: R.cover, msg: R.cover ? R.msg : '' };
+    fxl18(c).unshift(f); notes14(c).push({ by: 'System', role: 'System', when: f.when, text: `Fax sent by ${f.by} (FRM) to ${f.to}, ${f.fax}: ${f.docs.join(', ')}${f.cover ? ', with cover sheet' : ''}.` });
+    const fail = /0000$/.test(digits10(R.fax)); setTimeout(() => { f.status = 'Sending'; if (S.route === 'f-case') render(); }, 1500);
+    setTimeout(() => { if (fail) { f.status = 'Failed'; f.error = 'No answer'; } else f.status = 'Delivered'; if (S.route === 'f-case') render(); }, 4500);
+    S.drawer = null; S.fctab = 'faxes'; toast(`Fax queued to ${f.to}`); }
+});
+document.addEventListener('change', (e) => { const t = e.target; if (t.id !== 'ff18src' || !S.drawer || S.drawer.type !== 'ffax18') return; keep18();
+  const d = S.drawer, o = RCP18(cById(d.id)).find(x => x[0] === t.value); d.r.src = t.value; if (o) { d.r.name = o[2]; d.r.fax = o[3]; } d.err = {}; render(); const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; }; set('ffname', d.r.name); set('fffax', d.r.fax); });
+if (!P.chevu) P.chevu = '<path d="m6 15 6-6 6 6"/>';
+
+/* Outbound faxes tab */
+function faxSection18(c) { const F = fxl18(c);
+  const rows = F.length ? dtable([['Date', '190px', f => `<span class="num">${esc(f.when)}</span><span class="sub">${esc(f.by)}${f.role ? ` (${esc(f.role === 'FRM' ? 'FRM' : f.role)})` : ''}</span>`], ['Recipient', 'auto', f => `<b>${esc(f.to)}</b>${f.attn ? ` <span class="muted">attn: ${esc(f.attn)}</span>` : ''}<span class="sub num">${esc(f.fax)}</span>`],
+    ['Type', '190px', f => `${esc(f.type || 'Case document')}<span class="sub">${(f.docs || []).length} document${(f.docs || []).length === 1 ? '' : 's'} · ${f.pages} pages${f.cover ? ' · cover sheet' : ''}</span>`], ['Error', '180px', f => f.error ? `<span class="ff18err">${esc(f.error)}</span>` : '<span class="muted">None</span>'], ['Status', '110px', f => fxPill(f.status === 'Sent to fax service' ? 'Sending' : f.status)]], F)
+    : `<div class="fempty sm">${ic('fax', 26)}<b>No outbound faxes yet</b><span>Faxes sent from this case show here with their delivery status.</span></div>`;
+  return `<section class="card"><div class="card-h"><h2>Outbound faxes <span class="count">${F.length}</span></h2><span class="muted" style="font-size:12.5px">Faxes from the Hub and the FRM Workspace. Status updates as the fax service confirms delivery.</span><span style="flex:1"></span><button class="btn primary" data-a="ffax14" data-id="${c.id}">${ic('fax', 16)} Fax documents</button></div>${rows}</section>`; }
+{ const _cv = ROUTES_X['f-case']; ROUTES_X['f-case'] = () => { let h = _cv(); const c = cById(S.fcaseId); if (!c) return h; const F = fxl18(c);
+  h = h.replace(/>Faxes <span class="n num">\d+<\/span>/, `>Outbound faxes <span class="n num">${F.length}</span>`);
+  if ((S.fctab || 'details') === 'faxes') h = h.replace(/<section class="card"><div class="card-h"><h2>Faxes <span class="count">[\s\S]*?<\/section>/, faxSection18(c));
+  return h; }; }
 
 window.HP_START = () => render();
