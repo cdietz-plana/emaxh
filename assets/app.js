@@ -5852,7 +5852,7 @@ let SVIEWS = [{ id: 'v1', name: 'My open cases', cf: CF0(), isDefault: true }, {
 try { const v = JSON.parse(localStorage.getItem('hp-frmviews') || 'null'); if (Array.isArray(v) && v.length) SVIEWS = v; } catch (e) { }
 const saveViews = () => { try { localStorage.setItem('hp-frmviews', JSON.stringify(SVIEWS)); } catch (e) { } };
 const defView = () => SVIEWS.find(v => v.isDefault);
-if (!S.cf) { const d = defView(); S.cf = d ? Object.assign(CF0(), d.cf) : CF0(); S.cview = d ? d.id : ''; }
+if (!S.cf) { S.cf = CF0(); S.cview = ''; }
 const meName = () => frmMe().name;
 function cfMatch(x, cf, ignoreTiles) { const c = x.c;
   if (cf.frm === 'me' ? x.frm.name !== meName() : cf.frm !== 'all' && x.frm.name !== cf.frm) return false;
@@ -5896,7 +5896,7 @@ ROUTES_X['f-cases'] = () => { const cf = S.cf, all = allCases13(), base = all.fi
   const who = cf.frm === 'me' ? 'My cases' : cf.frm === 'all' ? 'All FRM cases' : `${cf.frm}'s cases`, fr = FRM10.find(f => f.name === cf.frm);
   const pt = cf.prod ? `${esc(cf.prod)} cases` : 'Cases', sub = cf.frm === 'me' ? `${pt} where your accounts are the ordering office or the scan facility, ${esc(frmMe().area)}.` : cf.frm === 'all' ? `${pt} in every FRM territory.` : `${pt} in the ${esc(fr ? fr.area : '')} territory.`;
   const views = `<div class="vsel"><label for="cv13">Saved view</label><select id="cv13">${SVIEWS.map(v => `<option value="${v.id}" ${S.cview === v.id ? 'selected' : ''}>${esc(v.name)}${v.isDefault ? ' (default)' : ''}</option>`).join('')}<option value="" ${!S.cview ? 'selected' : ''}>Custom filters</option></select><button class="btn" data-a="drawer" data-v="fview">${ic('plus', 16)} Save view</button>${S.cview && !(SVIEWS.find(v => v.id === S.cview) || {}).isDefault ? `<button class="btn ghost" data-a="cvdefault">Make default</button>` : ''}</div>`;
-  const head = `<div class="pagehead"><div><h1>${esc(who)}</h1><div class="muted" style="font-size:13px">${sub}</div></div><span style="flex:1"></span>${views}</div>`;
+  const head = `<div class="pagehead"><div><h1>${esc(who)}</h1><div class="muted" style="font-size:13px">${sub}</div></div></div>`;
   const cols = [['Case ID', '112px', x => `<button class="link-btn mono cid14" data-a="fopencase" data-id="${x.c.id}" title="Open the full case">${GEHC(x.c.id)}</button>`], ['Patient', '150px', x => `<b>${esc(x.c.last)}, ${esc(x.c.first)}</b>`], ['DOB', '92px', x => `<span class="num">${fmt(x.c.dob)}</span>`], ['Drug group', '92px', x => esc(x.prod)],
     ['Status', '140px', x => `<span class="fst ${x.open ? 'o' : 'c'} ${x.status === 'Order' ? 'ord' : x.status === 'Admin' ? 'adm' : ''}">${esc(x.status)}</span>${x.stage ? `<span class="sub">${esc(x.stage)}</span>` : ''}`], ['Case alert', '140px', x => x.alert ? pill(x.alert) : '<span class="muted">None</span>'], ['Primary carrier', '150px', x => esc(carrierOf(x.c))],
     ['Scan date', '92px', x => x.c.sched ? `<span class="num">${esc(x.c.sched)}</span>` : '<span class="muted">Not set</span>'], ['Ordering office', 'auto', x => esc(x.office)], ['Scan facility', 'auto', x => esc(x.scan)],
