@@ -5828,7 +5828,7 @@ const FX_OFFICES = { 'New England': [['Harborview Cardiology', 'Boston, MA 02114
       product: PRODS[(i * 3 + 1) % 4], sched: i % 3 ? fmt(addDays(TODAY, ((i * 9) % 40) - 20)) : undefined, seed12: 1 }); } }); })();
 
 /* ---------- FRM status model: status with stage, alerts, business days ---------- */
-const FST_OPEN = ['In process', 'Order'], FST1 = ['In process', 'Order', 'Admin', 'No admin', 'Unknown admin', 'Cancelled'];
+const FST_OPEN = ['In process', 'Order'], FST1 = ['In process', 'Order', 'Admin', 'No admin', 'Unknown admin'];
 const FST2 = [['BI', 'Benefits investigation'], ['MI', 'Missing information'], ['PA', 'Prior authorization'], ['Appeal', 'Appeal'], ['On hold', 'On hold'], ['No value', 'No value']];
 function seedAdm(c) { if (c.adm || c.caseStatus !== 'Complete') return; const h = hashId(c.id + 'adm') % 5, o = h < 3 ? 'Admin' : h < 4 ? 'No admin' : 'Unknown admin';
   c.adm = { outcome: o, date: o === 'Admin' ? (c.sched || fmt(addDays(c.updated || TODAY, -3))) : '', via: h % 2 ? 'Phone call to the facility' : 'Phone call to the patient', by: c.owner && c.owner !== 'Unassigned' ? c.owner : 'Janet Mills', when: fmt(c.updated || TODAY) }; }

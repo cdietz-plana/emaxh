@@ -2964,6 +2964,7 @@ html.hue-graphite .autobar.done{background:var(--ok-50,#eff0f0)}
 .ff18err{color:var(--danger);font-size:12.5px}
 .theme-dark .ff18ord li{background:rgba(255,255,255,.04)}
 
+.ftiles:not(.t2b):not(.t2){grid-template-columns:repeat(5,minmax(0,1fr))}@media (max-width:1180px){.ftiles:not(.t2b):not(.t2){grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* ===== Branding: custom hex = neutral palette below a colored nav bar ===== */
 html.brand-custom{--green:#3b4754;--green-700:#27313b;--green-50:#f1f3f5;--green-100:#e3e7eb;--green-grad:linear-gradient(135deg,#3b4754,#3b4754);--hover:#f2f4f6;--link:#2b3a48;--accent:#8a96a3;
   --nav-bg:var(--brand);--nav-bg-h:var(--brand);--nav-ink:var(--brand-ink);--nav-ink-2:var(--brand-ink2);--nav-hover:var(--brand-hover);--nav-on:var(--brand-hover)}
