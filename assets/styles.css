@@ -2965,6 +2965,13 @@ html.hue-graphite .autobar.done{background:var(--ok-50,#eff0f0)}
 .theme-dark .ff18ord li{background:rgba(255,255,255,.04)}
 
 .ftiles:not(.t2b):not(.t2){grid-template-columns:repeat(5,minmax(0,1fr))}@media (max-width:1180px){.ftiles:not(.t2b):not(.t2){grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* V19 imaging outcome */
+.img19-lock{display:flex;gap:10px;align-items:flex-start;padding:4px 0;color:var(--muted);font-size:13px}.img19-lock svg{flex:none;margin-top:2px}.img19-lock b{display:block;color:var(--ink);font-weight:600;margin-bottom:2px}
+.img19-f{display:flex;flex-direction:column;gap:12px}
+.img19-f input[type="date"],.img19-f select,.img19-f input:not([type]){width:100%}
+.img19-acts{display:flex;gap:8px;justify-content:flex-end;padding-top:4px}
+.img19.editing{box-shadow:0 0 0 2px var(--green-100),var(--shadow)}
+
 /* ===== Branding: custom hex = neutral palette below a colored nav bar ===== */
 html.brand-custom{--green:#3b4754;--green-700:#27313b;--green-50:#f1f3f5;--green-100:#e3e7eb;--green-grad:linear-gradient(135deg,#3b4754,#3b4754);--hover:#f2f4f6;--link:#2b3a48;--accent:#8a96a3;
   --nav-bg:var(--brand);--nav-bg-h:var(--brand);--nav-ink:var(--brand-ink);--nav-ink-2:var(--brand-ink2);--nav-hover:var(--brand-hover);--nav-on:var(--brand-hover)}

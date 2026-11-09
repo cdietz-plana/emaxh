@@ -5821,7 +5821,7 @@ const FX_OFFICES = { 'New England': [['Harborview Cardiology', 'Boston, MA 02114
   const SUB = { BI: 'Case progressed', 'Pending PA Submission': 'Missing documentation', 'Pending PA Outcome': 'Waiting on payer', 'Pending Appeal Submission': 'Waiting on prescriber', Active: 'Coverage approved', Complete: 'Duplicate', Requested: 'Case progressed', Closed: 'Duplicate', 'Pending PAP': 'Waiting on patient' };
   FRM10.forEach(f => { const off = FX_OFFICES[f.area]; if (!off) return; for (let k = 0; k < 6; k++) { const i = n++, h = (i * 2654435761 + 97) >>> 0, cs = ST[(i * 3 + k) % ST.length], [office, city, scan] = off[0];
     FXC.push({ id: 'E' + (210700 + i * 7), fx: true, frm: f.name, area: f.area, pid: 'P0' + (20300 + i * 5), first: FIRST[(i * 7 + 3) % FIRST.length], last: LAST[(i * 11 + 5) % LAST.length], mi: 'ABCDEFGHJKLMNPRSTW'[i % 18],
-      dob: new Date(1946 + (i * 13) % 50, (i * 5) % 12, 1 + (i * 17) % 27), gender: h % 2 ? 'Female' : 'Male', prescriber: `Dr. ${FIRST[(h >> 6) % FIRST.length]} ${LAST[(h >> 7) % LAST.length]}`, facility: office, scanName: scan, officeCity: city,
+      dob: new Date(1946 + (i * 13) % 50, (i * 5) % 12, 1 + (i * 17) % 27), gender: h % 2 ? 'Female' : 'Male', prescriber: `Dr. ${FIRST[(h >>> 6) % FIRST.length]} ${LAST[(h >>> 7) % LAST.length]}`, facility: office, scanName: scan, officeCity: city,
       payer: PAYERS[h % 5], caseStatus: cs, sub: SUB[cs], coverage: cs === 'Active' || cs === 'Complete' ? 'Approved' : cs.includes('Appeal') ? 'Denied' : 'Pending', ar: cs.includes('PA') || cs.includes('Appeal') ? 'Sent to Payer' : cs === 'Active' ? 'Active' : 'None',
       owner: TEAM[h % TEAM.length], start: addDays(TODAY, -(30 + h % 200)), updated: addDays(TODAY, -(h % 12)), phone: `(${['617', '312', '410', '813', '512', '612', '206'][h % 7]}) 555-${String(1000 + h % 8999).slice(0, 4)}`,
       street: `${100 + h % 8800} ${['Main Street', 'Lake Drive', 'Oak Avenue', 'Pine Road'][h % 4]}`, city, lang: 'English', best: 'Mornings', alt: `${FIRST[(h >> 8) % FIRST.length]} ${LAST[(h >> 4) % LAST.length]}`,
@@ -6773,5 +6773,66 @@ function faxSection18(c) { const F = fxl18(c);
   h = h.replace(/>Faxes <span class="n num">\d+<\/span>/, `>Outbound faxes <span class="n num">${F.length}</span>`);
   if ((S.fctab || 'details') === 'faxes') h = h.replace(/<section class="card"><div class="card-h"><h2>Faxes <span class="count">[\s\S]*?<\/section>/, faxSection18(c));
   return h; }; }
+
+
+/* ================= FRM V19: imaging outcome (scheduled date, status, administered date or reason) on the case detail ================= */
+FRM_VERSIONS.unshift(['f8', 'V19', 'Review round 18', 'Imaging outcome on the case detail, editable in place for cases in Order: imaging scheduled date, imaging status (Unknown, Administered, Not administered), administered date (today or earlier) or the reason not administered (with Please specify for Other). Changing the status clears the fields of the previous status, required fields show This field is required, and saving updates the case details and the journey tracker right away. Earlier stages show the section locked.']);
+const IMG_ST19 = [['Unknown', 'Unknown admin'], ['Administered', 'Admin'], ['Not administered', 'No admin']];
+const NA_REASONS19 = ['Patient cancelled the appointment', 'Patient did not show for the appointment', 'Patient declined the scan', 'Patient hospitalized', 'Patient deceased', 'Patient moved to another facility', 'Prescriber cancelled the order', 'Prescriber changed the treatment plan', 'Contraindication identified', 'Insurance denied coverage', 'Prior authorization expired', 'Patient cost concern', 'Product not available at the facility', 'Dose delivery issue', 'Scanner or equipment unavailable', 'Scheduling conflict at the facility', 'Unable to reach the patient', 'Other (please specify)'];
+const ORDER19 = ['Order', 'Admin', 'No admin', 'Unknown admin'];
+const canImg19 = (x) => ORDER19.includes(x.status);
+const label19 = (outcome) => (IMG_ST19.find(s => s[1] === outcome) || ['Unknown'])[0];
+const todayIso19 = () => isoOf(fmt(TODAY));
+
+function imgCard19(c, x) { const a = c.adm || {}, E = S.fimg19 && S.fimg19.id === c.id ? S.fimg19 : null, can = canImg19(x);
+  const head = (act) => `<div class="card-h"><h3>${ic('check', 16)} Imaging outcome</h3>${act || ''}</div>`;
+  if (!can) return `<section class="card fccard img19">${head()}<div class="card-b"><div class="img19-lock">${ic('clock', 18)}<span><b>Available once the case reaches Order</b>${x.status === 'Cancelled' ? 'This case was cancelled, so no imaging outcome can be recorded.' : `The case is ${esc(fstText(x))}. The imaging outcome can be recorded when coverage is approved and the case moves to Order.`}</span></div></div></section>`;
+  if (!E) { const st = a.outcome ? label19(a.outcome) : 'Unknown';
+    const rows = fld('Imaging scheduled date', c.sched || 'Not scheduled', false) + kv('Imaging status', `<b>${esc(st)}</b>${a.outcome ? '' : ' <span class="muted">(not recorded yet)</span>'}`)
+      + (a.outcome === 'Admin' ? fld('Administered date', a.date || '', false) : '') + (a.outcome === 'No admin' ? fld('Reason not administered', a.reason ? (a.reason === NA_REASONS19[17] ? `Other: ${a.other || ''}` : a.reason) : 'Not recorded', false) : '')
+      + (a.by ? kv('Last updated', `${esc(a.by)}, ${esc(a.when)}`) : '');
+    return `<section class="card fccard img19" id="img19">${head(`<button class="btn sm" data-a="fimg19edit" data-id="${c.id}">${ic('edit', 14)} Edit</button>`)}<div class="card-b"><div class="fields">${rows}</div></div></section>`; }
+  const e = E.err || {}, req = (k) => e[k] ? errField(e[k]) : '';
+  return `<section class="card fccard img19 editing" id="img19">${head()}<div class="card-b img19-f">
+    <div class="input ${e.sched ? 'err' : ''}"><label class="lbl" for="img19sched">Imaging scheduled date <span class="optl">Optional</span></label><input type="date" id="img19sched" value="${esc(E.sched)}"><span class="help">Past or future dates</span>${req('sched')}</div>
+    <div class="input"><label class="lbl" for="img19st">Imaging status <span class="req">*</span></label><select id="img19st">${IMG_ST19.map(([l]) => `<option ${E.st === l ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    ${E.st === 'Administered' ? `<div class="input ${e.adate ? 'err' : ''}"><label class="lbl" for="img19adate">Administered date <span class="req">*</span></label><input type="date" id="img19adate" value="${esc(E.adate)}" max="${todayIso19()}"><span class="help">Today or earlier</span>${req('adate')}</div>` : ''}
+    ${E.st === 'Not administered' ? `<div class="input ${e.reason ? 'err' : ''}"><label class="lbl" for="img19reason">Reason not administered <span class="req">*</span></label><select id="img19reason"><option value="">Choose a reason</option>${NA_REASONS19.map(r => `<option ${E.reason === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>${req('reason')}</div>` : ''}
+    ${E.st === 'Not administered' && E.reason === NA_REASONS19[17] ? `<div class="input ${e.other ? 'err' : ''}"><label class="lbl" for="img19other">Please specify <span class="req">*</span></label><input id="img19other" value="${esc(E.other)}" maxlength="200" placeholder="Describe the reason">${req('other')}</div>` : ''}
+    <div class="img19-acts"><button class="btn" data-a="fimg19cancel">Cancel</button><button class="btn primary" data-a="fimg19save" data-id="${c.id}">Save outcome</button></div></div></section>`; }
+
+{ const _cv = ROUTES_X['f-case']; ROUTES_X['f-case'] = () => { let h = _cv(); const c = cById(S.fcaseId); if (!c) return h; const x = fx13(c);
+  if ((S.fctab || 'details') === 'details') { const i = h.indexOf('Scan administration</h3>'); if (i > 0) { const s = h.lastIndexOf('<section class="card fccard">', i), e = h.indexOf('</section>', i) + 10; if (s > 0 && e > 10) h = h.slice(0, s) + imgCard19(c, x) + h.slice(e); } }
+  h = h.replace(/<button class="btn" data-a="fadm14" data-id="[^"]*">[\s\S]*?Log scan status<\/button>/, canImg19(x) ? `<button class="btn" data-a="fimg19edit" data-id="${c.id}">${ic('check', 16)} Imaging outcome</button>` : '');
+  return h; }; }
+
+const keep19 = () => { const E = S.fimg19; if (!E) return; const g = (id) => { const el = document.getElementById(id); return el ? el.value : undefined; };
+  [['img19sched', 'sched'], ['img19adate', 'adate'], ['img19reason', 'reason'], ['img19other', 'other']].forEach(([id, k]) => { const v = g(id); if (v !== undefined) E[k] = v; }); };
+const scrollImg19 = () => setTimeout(() => { const el = document.getElementById('img19'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 60);
+Object.assign(EXTRA, {
+  fimg19edit(t) { const c = cById(t.dataset.id), x = fx13(c); if (!canImg19(x)) return; const a = c.adm || {};
+    S.fimg19 = { id: c.id, sched: c.sched ? isoOf(c.sched) : '', st: a.outcome ? label19(a.outcome) : 'Unknown', adate: a.outcome === 'Admin' && a.date ? isoOf(a.date) : '', reason: a.reason || '', other: a.other || '', err: {}, had: !!a.outcome };
+    S.fctab = 'details'; scrollImg19(); },
+  fimg19cancel() { S.fimg19 = null; },
+  fimg19save(t) { keep19(); const E = S.fimg19, c = cById(t.dataset.id), x = fx13(c); if (!E || !canImg19(x)) { S.fimg19 = null; toast('The imaging outcome can only be recorded for cases in Order'); return; }
+    const e = {}, R = 'This field is required';
+    if (E.st === 'Administered') { if (!E.adate) e.adate = R; else if (E.adate > todayIso19()) e.adate = 'Choose today or an earlier date'; }
+    if (E.st === 'Not administered') { if (!E.reason) e.reason = R; else if (E.reason === NA_REASONS19[17] && !String(E.other || '').trim()) e.other = R; }
+    E.err = e; if (Object.keys(e).length) return;
+    const before = fstText(x); c.sched = E.sched ? usOf(E.sched) : '';
+    if (E.st === 'Unknown' && !E.had) { /* default status with nothing recorded before: only the scheduled date is saved */ }
+    else c.adm = { outcome: (IMG_ST19.find(s => s[0] === E.st) || IMG_ST19[0])[1], date: E.st === 'Administered' ? usOf(E.adate) : '', reason: E.st === 'Not administered' ? E.reason : '', other: E.st === 'Not administered' && E.reason === NA_REASONS19[17] ? E.other.trim() : '', via: 'Logged by the FRM', by: frmMe().name, when: fmt(TODAY) };
+    const after = fstText(fx13(c));
+    notes14(c).push({ by: 'System', role: 'System', when: nowStamp14(), text: `Imaging outcome updated by ${frmMe().name} (FRM): ${E.st}${E.st === 'Administered' ? ' on ' + usOf(E.adate) : ''}${E.st === 'Not administered' ? ', ' + (E.reason === NA_REASONS19[17] ? 'Other: ' + E.other.trim() : E.reason) : ''}${c.sched ? '. Scheduled ' + c.sched : ''}.` });
+    S.fimg19 = null; toast(before !== after ? `Imaging outcome saved. Status is now ${after}` : 'Imaging outcome saved'); }
+});
+document.addEventListener('change', (e) => { const t = e.target, E = S.fimg19; if (!E) return;
+  if (t.id === 'img19st') { keep19(); E.st = t.value; E.adate = ''; E.reason = ''; E.other = ''; E.err = {}; render(); ['img19adate', 'img19reason', 'img19other'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; }); return; }
+  if (t.id === 'img19reason') { keep19(); E.reason = t.value; E.other = ''; if (E.err) { delete E.err.reason; delete E.err.other; } render(); const el = document.getElementById('img19other'); if (el) el.value = ''; return; }
+  if (['img19adate', 'img19sched'].includes(t.id)) { keep19(); if (E.err && t.id === 'img19adate' && t.value) { delete E.err.adate; const box = t.closest('.input'); if (box) { box.classList.remove('err'); const m = box.querySelector('.errmsg'); if (m) m.remove(); } } } });
+document.addEventListener('input', (e) => { const E = S.fimg19; if (!E || e.target.id !== 'img19other') return; E.other = e.target.value; if (E.err && E.err.other && e.target.value.trim()) { delete E.err.other; const box = e.target.closest('.input'); if (box) { box.classList.remove('err'); const m = box.querySelector('.errmsg'); if (m) m.remove(); } } });
+{ const _o = EXTRA.fopencase; EXTRA.fopencase = function (t, e) { S.fimg19 = null; return _o(t, e); }; }
+{ const _t = EXTRA.fctab; EXTRA.fctab = function (t, e) { S.fimg19 = null; return _t(t, e); }; }
+EXTRA.fadm14 = EXTRA.fimg19edit;
 
 window.HP_START = () => render();
