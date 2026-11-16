@@ -5226,7 +5226,7 @@ function frmShell(content) {
 /* ---------- Today ---------- */
 const fuRow = (f) => { const a = accOf(f.acc), d = dayDiff(f.due);
   return `<div class="fu ${f.done ? 'done' : ''}"><button class="fucheck" data-a="ffudone" data-id="${f.id}" aria-label="${f.done ? 'Reopen' : 'Mark done'}">${f.done ? ic('check', 14) : ''}</button><div><b>${esc(f.text)}</b><span class="muted"><a href="#" data-a="facc" data-id="${a.id}">${esc(a.name)}</a> · ${esc(f.type)}${f.review ? ' · On office review' : ''}</span></div><span class="fudue ${!f.done && d < 0 ? 'late' : !f.done && d === 0 ? 'today' : ''}">${f.done ? 'Done' : d < 0 ? `${-d} day${d === -1 ? '' : 's'} overdue` : d === 0 ? 'Due today' : 'Due ' + fmt(f.due).replace(/\/\d{4}$/, '')}${f.pri === 'High' && !f.done ? '<span class="pill nodot t-danger">High</span>' : ''}</span></div>`; };
-const actRow = (x) => { const a = accOf(x.acc); return `<div class="fact"><div class="fa-h"><b>${esc(x.method)}: ${esc(x.inter)}</b> with <a href="#" data-a="facc" data-id="${a.id}">${esc(a.name)}</a><span class="muted num">${fmt(x.date)}</span></div><p>${esc(x.note)}</p><div class="fa-t">${x.prods.map(p => `<span class="pill nodot t-info">${p}</span>`).join('')}${x.topics.map(t => `<span class="frtag">${esc(t)}</span>`).join('')}${pill(x.outcome)}</div><div class="muted" style="font-size:12px">${x.pro ? 'Proactive' : 'Reactive'} · met with ${esc(x.met.join(', '))}</div></div>`; };
+let actRow = (x) => { const a = accOf(x.acc); return `<div class="fact"><div class="fa-h"><b>${esc(x.method)}: ${esc(x.inter)}</b> with <a href="#" data-a="facc" data-id="${a.id}">${esc(a.name)}</a><span class="muted num">${fmt(x.date)}</span></div><p>${esc(x.note)}</p><div class="fa-t">${x.prods.map(p => `<span class="pill nodot t-info">${p}</span>`).join('')}${x.topics.map(t => `<span class="frtag">${esc(t)}</span>`).join('')}${pill(x.outcome)}</div><div class="muted" style="font-size:12px">${x.pro ? 'Proactive' : 'Reactive'} · met with ${esc(x.met.join(', '))}</div></div>`; };
 function watchReasons(a) { const r = [], s = ascore(a), age = aage(a), ov = FFU.some(f => f.acc === a.id && !f.done && dayDiff(f.due) < 0);
   if (s != null && s < 4) r.push('Health score at risk'); if (age != null && age > FSTALE) r.push(`Assessment is ${age} days old`); if (s == null && a.prods.includes('Flyrcado')) r.push('Not assessed yet'); if (a.m.pa < 70) r.push(`PA approval ${a.m.pa}% vs territory ${tavg('pa')}%`); if (ov) r.push('Overdue follow-up'); return r; }
 const tavg = (k) => { const A = myAccts(); return Math.round(A.reduce((s, a) => s + a.m[k], 0) / Math.max(1, A.length)); };
@@ -6843,4 +6843,152 @@ journey14 = function (x) { const j = jIdx14(x), can = j < 0, adm = x.status === 
   return `<ol class="jr14 j4 ${can ? 'can' : ''}" aria-label="Patient journey">${J14.map((l, i) => { const st = can ? 'todo' : adm ? 'done' : i < j ? 'done' : i === j ? 'on' : 'todo';
     return `<li class="${st}"><span class="jr-dot">${st === 'done' ? ic('check', 13) : i + 1}</span><span class="jr-l">${l}</span>${i === 3 && !can ? `<span class="jr-sub">Complete, PA approved${IMGL19[x.status] ? ` · Imaging <b>${IMGL19[x.status].toLowerCase()}</b>` : ''}</span>` : ''}${st === 'on' ? '<span class="jr-now">Current</span>' : ''}</li>`; }).join('')}</ol>
     ${can ? `<div class="jr-can">${ic('x', 14)} Case cancelled. The journey stopped before the scan.</div>` : adm ? `<div class="jr-done">${ic('check', 14)} Imaging administered${a.date ? ' on ' + esc(a.date) : ''}.</div>` : ''}`; };
+
+/* ================= FRM V20: Log activity, Activity page, edit and delete activities ================= */
+FRM_VERSIONS.unshift(['f9', 'V20', 'Review round 19', 'Log activity from the case detail and the Activity page in a three-step drawer (interaction, details, follow-up) with the case prefilled from a case, offices from every territory, contacts and Hub ID cases for the chosen office, a 500-character note limit and an inline follow-up. The Activity page shows your activities with 30-day totals, proactive and face-to-face shares, four filters, a timeline and accounts not contacted recently. You can edit or delete activities you logged.']);
+const ME20 = () => frmMe().name;
+const WIN20 = 30;
+const WITH20 = ['Free-standing imaging center or physician office', 'Hospital or hospital outpatient', 'Sales rep or zone leader', 'FRM', 'Medical affairs'];
+const FUTYPE20 = ['Call', 'Visit', 'Email', 'Send resource', 'Schedule in-service', 'Payer research', 'Escalate to HUB'];
+const ST20 = (n) => n.split(', ').pop().replace(/\s*\d{5}$/, '');
+
+/* Locations: every office and facility across territories, plus the ordering offices of colleague sample cases */
+{ const _fa = frmAccounts; let X = null; frmAccounts = function () { const base = _fa();
+  if (!X) { X = []; const seen = new Set(base.map(a => a.name)); FXC.forEach(c => { if (seen.has(c.facility)) return; seen.add(c.facility);
+    X.push(mkAcct({ id: 'LX' + (X.length + 1), name: c.facility, type: 'Physician office', locs: [{ city: c.officeCity || 'Boston, MA 02114' }], contact: '', roles: [] })); }); }
+  return base.concat(X); }; }
+const locLabel20 = (a) => `${a.name} · ${a.city}`;
+const locs20 = () => frmAccounts().slice().sort((p, q) => p.name.localeCompare(q.name));
+const accByName20 = (n) => frmAccounts().find(a => a.name === n);
+const caseOpts20 = (a) => a ? allCases13().filter(x => x.open && (x.office === a.name || x.scan === a.name)) : [];
+const caseLabel20 = (x) => `${GEHC(x.c.id)}, ${x.c.first} ${x.c.last} (${x.prod}, ${fstText(x)})`;
+const d2_20 = (d) => { const z = new Date(d); return `${String(z.getMonth() + 1).padStart(2, '0')}/${String(z.getDate()).padStart(2, '0')}/${z.getFullYear()}`; };
+const todayIso20 = () => isoOf(fmt(TODAY));
+
+/* Seeded activities: creator, linked case, story vocabulary */
+(function seed20() { try { seedFRM(); } catch (e) { return; }
+  const old = FWITH.slice(); FWITH.splice(0, FWITH.length, ...WITH20);
+  const me = ME20(), other = (FRM10.find(f => f.name !== me) || { name: 'Shawn Rasmussen' }).name;
+  FACT.forEach((x, i) => { const k = old.indexOf(x.withFor); if (k >= 0) x.withFor = WITH20[k]; x.by = me; x.created = x.date; x.updated = null;
+    if (x.case === undefined) { const o = caseOpts20(accOf(x.acc)); x.case = i % 3 === 0 && o.length ? o[i % o.length].c.id : ''; } });
+  FACT.slice(0, 3).forEach((x, i) => FACT.push({ ...x, id: 'ACX' + i, by: other, date: addDays(x.date, -2), created: addDays(x.date, -2), note: 'Joint visit with the sales account manager. Walked through the referral form and the Support Center enrollment steps.', met: x.met.slice(0, 1), case: '' })); })();
+const mine20 = () => FACT.filter(x => x.by === ME20());
+
+/* ---------- Drawer state ---------- */
+function newLog20(o = {}) { const a = o.acc ? accOf(o.acc) : null;
+  return { type: 'flog20', id: 'new', step: 0, err: {}, edit: null, r: { acc: o.acc || '', date: todayIso20(), method: '', inter: '', pro: o.pro || '', prods: o.prods || [], with: '', met: [], case: o.case || '', topics: [], outcome: '', note: '',
+    fu: false, fuText: '', fuType: '', fuDue: '', fuPri: 'Normal', fuOwner: ME20(), fuCase: o.case || '', fuReview: true, fuNote: '' }, from: o.from || '' }; }
+function editLog20(x) { return { type: 'flog20', id: x.id, step: 0, err: {}, edit: x.id, r: { acc: x.acc, date: isoOf(fmt(x.date)), method: x.method, inter: x.inter, pro: x.pro ? 'Proactive' : 'Reactive', prods: x.prods.slice(), with: x.withFor || '', met: x.met.slice(), case: x.case || '', topics: x.topics.slice(), outcome: x.outcome || '', note: x.note === 'No notes' ? '' : x.note, fu: false } }; }
+const keep20 = () => { const d = S.drawer; if (!d || d.type !== 'flog20') return; const R = d.r, g = (id) => { const el = document.getElementById(id); return el ? el.value : undefined; }, cks = (cls) => { const L = [...document.querySelectorAll('.' + cls)]; return L.length ? L.filter(x => x.checked).map(x => x.value) : undefined; };
+  [['fl20date', 'date'], ['fl20inter', 'inter'], ['fl20with', 'with'], ['fl20case', 'case'], ['fl20note', 'note'], ['fl20futext', 'fuText'], ['fl20futype', 'fuType'], ['fl20fudue', 'fuDue'], ['fl20fupri', 'fuPri'], ['fl20fuown', 'fuOwner'], ['fl20fucase', 'fuCase'], ['fl20funote', 'fuNote']].forEach(([id, k]) => { const v = g(id); if (v !== undefined) R[k] = v; });
+  [['fl20prod', 'prods'], ['fl20met', 'met'], ['fl20top', 'topics']].forEach(([c, k]) => { const v = cks(c); if (v !== undefined) R[k] = v; });
+  const rv = document.getElementById('fl20fureview'); if (rv) R.fuReview = rv.checked; };
+function check20(R, step, edit) { const e = {}, req = 'This field is required';
+  if (step === 0) { if (!R.acc) e.acc = req; if (!R.date) e.date = req; else if (R.date > todayIso20()) e.date = 'Choose today or an earlier date'; if (!R.method) e.method = req; if (!R.inter) e.inter = 'Select an interaction type'; if (!R.pro) e.pro = req; if (!R.prods.length) e.prods = 'Select at least one product'; }
+  if (step === 1) { if (R.note.length > 500) e.note = `Notes can be up to 500 characters (${R.note.length} now)`; else if (!R.note.trim() && !R.topics.length) e.note = 'Add notes or select at least one topic discussed'; }
+  if (step === 2 && !edit && R.fu) { if (!R.fuText.trim()) e.fuText = req; if (!R.fuType) e.fuType = req; if (!R.fuDue) e.fuDue = 'Pick a due date'; else if (R.fuDue < todayIso20()) e.fuDue = 'Choose today or a later date'; if (!R.fuPri) e.fuPri = req; if (!R.fuOwner) e.fuOwner = req; if (R.fuNote.length > 500) e.fuNote = `Notes can be up to 500 characters (${R.fuNote.length} now)`; }
+  return e; }
+const seg20 = (k, opts, cur, err) => `<div class="segradio seg20 ${err ? 'err' : ''}" role="radiogroup">${opts.map(o => `<label><input type="radio" name="fl20${k}" data-a="fl20seg" data-k="${k}" data-v="${esc(o)}" ${cur === o ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('')}</div>`;
+const lbl20 = (t, req, opt) => `<span class="lbl">${t}${req ? ' <span class="req">*</span>' : ''}${opt ? ' <span class="optl">Optional</span>' : ''}</span>`;
+const ef20 = (e, k) => e[k] ? errField(e[k]) : '';
+
+{ const _d = drawer; drawer = function () { let d = S.drawer;
+  if (d && d.type === 'flog' && isFRM()) { const a = d.id ? accOf(d.id) : null; S.drawer = d = newLog20({ acc: a ? a.id : '' }); }
+  if (!d || !['flog20', 'fcase20'].includes(d.type)) return _d();
+  const enter = LAST_DRAWER !== d.type + (d.id || '') && !LAST_DRAWER;
+  const shell = (title, body, foot, wide) => `<div class="drawer-scrim ${enter ? 'enter' : ''}" data-a="drawerclose"></div><aside class="drawer ${wide ? 'wide14' : ''} ${enter ? 'enter' : ''}" role="dialog" aria-label="${esc(title)}"><div class="drawer-h"><h2>${esc(title)}</h2><button class="iconbtn" data-a="drawerclose" aria-label="Close">${ic('x', 18)}</button></div><div class="drawer-b">${body}</div><div class="drawer-f">${foot}</div></aside>`;
+  if (d.type === 'fcase20') { const c = cById(d.id); if (!c) return ''; const x = fx13(c);
+    return shell(`Case ${GEHC(c.id)}`, `<div class="pv20h"><span class="avatar">${(c.first[0] + c.last[0]).toUpperCase()}</span><div><b>${esc(c.first)} ${esc(c.last)}</b><span class="muted">DOB ${fmt(c.dob)} · ${esc(x.prod)}</span></div></div>
+      <div class="jr14wrap">${journey14(x)}</div><div class="fields">${kv('Status with stage', `<b>${esc(fstText(x))}</b>`)}${kv('In this status', `${x.days} business days`)}${kv('Case alert', x.alert ? pill(x.alert) : '<span class="muted">None</span>')}${fld('Ordering office', x.office, false)}${fld('Scan facility', x.scan, false)}${fld('Supporting FRM', x.frm.name, false)}</div>`,
+      `<button class="btn" data-a="drawerclose">Close</button><span style="flex:1"></span><button class="btn primary" data-a="fopen20" data-id="${c.id}">${ic('expand', 16)} Expand to full view</button>`, 1); }
+  const R = d.r, e = d.err || {}, st = d.step || 0, ed = !!d.edit, a = R.acc ? accOf(R.acc) : null, steps = ed ? ['Interaction', 'Details'] : ['Interaction', 'Details', 'Follow-up'], last = steps.length - 1;
+  const stepper = `<ol class="mstepper">${steps.map((s, i) => `<li class="${i < st ? 'done' : i === st ? 'on' : ''}"><span>${i < st ? ic('check', 12) : i + 1}</span>${s}</li>`).join('')}</ol>`;
+  let body = '';
+  if (st === 0) body = `<div class="input ${e.acc ? 'err' : ''}"><label class="lbl" for="fl20acc">Facility or office <span class="req">*</span></label><select id="fl20acc"><option value="">Select a facility or office</option>${locs20().map(o => `<option value="${o.id}" ${R.acc === o.id ? 'selected' : ''}>${esc(locLabel20(o))}</option>`).join('')}</select><span class="help">Any office or facility, in any territory.</span>${ef20(e, 'acc')}</div>
+    <div class="imrow" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><div class="input ${e.date ? 'err' : ''}"><label class="lbl" for="fl20date">Date of interaction <span class="req">*</span></label><input type="date" id="fl20date" value="${esc(R.date)}" max="${todayIso20()}">${ef20(e, 'date')}</div>
+      <div class="input ${e.inter ? 'err' : ''}"><label class="lbl" for="fl20inter">Type of interaction <span class="req">*</span></label><select id="fl20inter"><option value="">Select interaction...</option>${FINTER.map(o => `<option ${R.inter === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${ef20(e, 'inter')}</div></div>
+    <div class="input ${e.method ? 'err' : ''}">${lbl20('Method of communication', 1)}${seg20('method', FMETHODS, R.method, e.method)}${ef20(e, 'method')}</div>
+    <div class="input ${e.pro ? 'err' : ''}">${lbl20('Proactive or reactive', 1)}${seg20('pro', ['Proactive', 'Reactive'], R.pro, e.pro)}${ef20(e, 'pro')}</div>
+    <div class="input ${e.prods ? 'err' : ''}">${lbl20('Product(s)', 1)}<div class="fcks fck20">${PRODS.map(p => `<label class="opt"><input type="checkbox" class="fl20prod" value="${p}" ${R.prods.includes(p) ? 'checked' : ''}><span>${p}</span></label>`).join('')}</div>${ef20(e, 'prods')}</div>
+    <div class="input"><label class="lbl" for="fl20with">Activity with or for <span class="optl">Optional</span></label><select id="fl20with"><option value="">Select</option>${WITH20.map(o => `<option ${R.with === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`;
+  if (st === 1) { const C = caseOpts20(a);
+    body = `<div class="fl20acc">${ic('building', 15)} <b>${a ? esc(locLabel20(a)) : ''}</b></div>
+    <div class="input">${lbl20('Names', 0, 1)}<div class="fcks">${a && a.contacts.length ? a.contacts.map(c => `<label class="opt"><input type="checkbox" class="fl20met" value="${esc(c.name)}" ${R.met.includes(c.name) ? 'checked' : ''}><span>${esc(c.name)} <span class="muted">${esc(c.role)}</span></span></label>`).join('') : '<span class="muted">No contacts on file for this office.</span>'}</div></div>
+    <div class="input"><label class="lbl" for="fl20case">Hub ID <span class="optl">Optional</span></label><select id="fl20case"><option value="">None</option>${C.map(x => `<option value="${x.c.id}" ${R.case === x.c.id ? 'selected' : ''}>${esc(caseLabel20(x))}</option>`).join('')}${R.case && !C.some(x => x.c.id === R.case) && cById(R.case) ? `<option value="${R.case}" selected>${esc(caseLabel20(fx13(cById(R.case))))}</option>` : ''}</select><span class="help">Open cases for this office.</span></div>
+    <div class="input ${e.note && !R.note.trim() ? 'err' : ''}">${lbl20('Topics discussed', 0, 1)}<div class="fcks fck20 two">${FTOPICS.map(t => `<label class="opt"><input type="checkbox" class="fl20top" value="${t}" ${R.topics.includes(t) ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div></div>
+    <div class="input">${lbl20('Outcome', 0, 1)}<div class="seg20row">${seg20('outcome', FOUTCOME, R.outcome)}${R.outcome ? '<button class="link-btn" data-a="fl20clr">Clear</button>' : ''}</div></div>
+    <div class="input ${e.note ? 'err' : ''}"><label class="lbl" for="fl20note">Notes</label><textarea id="fl20note" maxlength="600" style="height:110px" placeholder="What was discussed and agreed">${esc(R.note)}</textarea><span class="cnt20 ${R.note.length > 500 ? 'over' : ''}" id="fl20cnt">${R.note.length} / 500</span>${ef20(e, 'note')}<span class="help">Add notes, select a topic, or both.</span></div>`; }
+  if (st === 2 && !ed) { const C = a ? allCases13().filter(x => x.office === a.name || x.scan === a.name) : [];
+    body = `<label class="setrow fu20tog"><span><b>Follow-up required</b><span class="muted">Schedule the next step now. It is saved with this activity.</span></span><input type="checkbox" class="switch" data-a="fl20fu" ${R.fu ? 'checked' : ''}></label>
+    ${R.fu ? `${inp('fl20futext', 'What needs to happen', { req: 1, err: e.fuText, v: R.fuText, phText: 'For example, confirm the EMR coding build' })}
+    <div class="imrow" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">${inp('fl20futype', 'Type', { req: 1, err: e.fuType, opts: FUTYPE20, v: R.fuType })}<div class="input ${e.fuDue ? 'err' : ''}"><label class="lbl" for="fl20fudue">Due <span class="req">*</span></label><input type="date" id="fl20fudue" value="${esc(R.fuDue)}" min="${todayIso20()}" aria-describedby="fl20duehelp"><span class="help" id="fl20duehelp">Pick a date in the future</span>${ef20(e, 'fuDue')}</div></div>
+    <div class="imrow" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">${inp('fl20fupri', 'Priority', { req: 1, err: e.fuPri, opts: ['Normal', 'High', 'Low'], ph: false, v: R.fuPri })}<div class="input ${e.fuOwner ? 'err' : ''}"><label class="lbl" for="fl20fuown">Owner <span class="req">*</span></label><select id="fl20fuown"><option value="${esc(ME20())}" ${R.fuOwner === ME20() ? 'selected' : ''}>Me (${esc(ME20())})</option><optgroup label="FRMs">${FRM10.filter(f => f.name !== ME20()).map(f => `<option ${R.fuOwner === f.name ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</optgroup><optgroup label="Case managers">${TEAM.map(t => `<option ${R.fuOwner === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</optgroup></select>${ef20(e, 'fuOwner')}</div></div>
+    <div class="input"><label class="lbl" for="fl20fucase">Related case <span class="optl">Optional</span></label><select id="fl20fucase"><option value="">None</option>${C.map(x => `<option value="${x.c.id}" ${R.fuCase === x.c.id ? 'selected' : ''}>${esc(caseLabel20(x))}</option>`).join('')}</select></div>
+    <label class="opt"><input type="checkbox" id="fl20fureview" ${R.fuReview ? 'checked' : ''}><span>Show on the office review as a next step</span></label>
+    <div class="input ${e.fuNote ? 'err' : ''}"><label class="lbl" for="fl20funote">Notes <span class="optl">Optional</span></label><textarea id="fl20funote" style="height:70px">${esc(R.fuNote)}</textarea>${ef20(e, 'fuNote')}</div>` : '<div class="ff18none">No follow-up. Check Follow-up required to schedule one with this activity.</div>'}`; }
+  const back = st ? `<button class="btn" data-a="fl20step" data-v="-1">${ic('chevl', 16)} Back</button>` : `<button class="btn" data-a="drawerclose">Cancel</button>`;
+  const fwd = st < last ? `<button class="btn ${ed ? '' : 'primary'}" data-a="fl20step" data-v="1">Continue ${ic('chevr', 16)}</button>` : '';
+  const save = ed ? `<button class="btn primary" data-a="fl20save">Save changes</button>` : st === last ? `<button class="btn primary" data-a="fl20save">Save activity</button>` : '';
+  return shell(ed ? 'Edit activity' : 'Log activity', stepper + body, `${back}<span style="flex:1"></span>${fwd}${save}`); }; }
+
+Object.assign(EXTRA, {
+  fl20seg(t) { keep20(); const R = S.drawer.r; R[t.dataset.k] = t.dataset.v; if (S.drawer.err) delete S.drawer.err[t.dataset.k]; },
+  fl20clr() { keep20(); S.drawer.r.outcome = ''; },
+  fl20fu() { keep20(); S.drawer.r.fu = !S.drawer.r.fu; S.drawer.err = {}; },
+  fl20step(t) { keep20(); const d = S.drawer, dir = +t.dataset.v; if (dir > 0) { const e = check20(d.r, d.step, !!d.edit); d.err = e; if (Object.keys(e).length) return; } d.err = {}; d.step = Math.max(0, d.step + dir); },
+  fl20save() { keep20(); const d = S.drawer, R = d.r, ed = !!d.edit;
+    for (const s of ed ? [0, 1] : [0, 1, 2]) { const e = check20(R, s, ed); if (Object.keys(e).length) { d.err = e; d.step = s; return; } }
+    const rec = { acc: R.acc, date: new Date(R.date + 'T00:00:00'), method: R.method, inter: R.inter, withFor: R.with, met: R.met.slice(), topics: R.topics.slice(), outcome: R.outcome, prods: R.prods.slice(), note: R.note.trim(), pro: R.pro === 'Proactive', case: R.case };
+    if (ed) { const x = FACT.find(z => z.id === d.edit); if (!x || x.by !== ME20()) { S.drawer = null; toast('You can only edit activities you logged'); return; } Object.assign(x, rec, { updated: new Date() }); S.drawer = null; S.fnew20 = x.id; toast('Activity updated'); return; }
+    const id = 'AC' + Date.now(); FACT.push(Object.assign({ id, by: ME20(), created: new Date(), updated: null }, rec));
+    if (R.fu) FFU.push({ id: 'FU' + Date.now(), acc: R.acc, text: R.fuText.trim(), type: R.fuType, due: new Date(R.fuDue + 'T00:00:00'), pri: R.fuPri, done: false, review: R.fuReview, owner: R.fuOwner, case: R.fuCase, note: R.fuNote.trim(), act: id });
+    S.drawer = null; S.fnew20 = id; toast(R.fu ? 'Activity and follow-up saved' : 'Activity saved'); },
+  fl20edit(t) { const x = FACT.find(z => z.id === t.dataset.id); if (!x || x.by !== ME20()) return; S.drawer = editLog20(x); },
+  fl20del(t) { const x = FACT.find(z => z.id === t.dataset.id); if (!x || x.by !== ME20()) return; S.modal = { type: 'fdel20', id: x.id }; },
+  fl20delgo(t) { const i = FACT.findIndex(z => z.id === t.dataset.id); if (i < 0 || FACT[i].by !== ME20()) { S.modal = null; return; } const id = FACT[i].id; FACT.splice(i, 1); FFU.forEach(f => { if (f.act === id) f.act = ''; }); S.modal = null; toast('Activity deleted'); },
+  fcase20(t, e) { if (e && e.preventDefault) e.preventDefault(); S.drawer = { type: 'fcase20', id: t.dataset.id }; },
+  fopen20(t) { S.drawer = null; EXTRA.fopencase(t); },
+  flogcase20(t) { const c = cById(t.dataset.id); if (!c) return; const a = accByName20(c.facility); S.drawer = newLog20({ acc: a ? a.id : '', case: c.id, pro: 'Reactive', prods: [prodOf(c)], from: 'case' }); },
+  af20(t) { S.af20 = S.af20 || {}; }
+});
+{ const _x = extraModal; extraModal = function (m, wrap) { if (!m || m.type !== 'fdel20') return _x(m, wrap); const x = FACT.find(z => z.id === m.id), a = x ? accOf(x.acc) : null;
+  return wrap('Delete this activity?', `<p style="margin:0">Are you sure you want to delete this activity? This action cannot be undone.</p>${x ? `<div class="del20"><b>${esc(x.method)}: ${esc(x.inter)}</b> with ${esc(a ? a.name : '')} · ${d2_20(x.date)}</div>` : ''}${x && FFU.some(f => f.act === x.id && !f.done) ? '<p class="muted" style="margin:8px 0 0;font-size:13px">The follow-up scheduled with it stays on your Follow-ups list.</p>' : ''}`,
+    `<button class="btn" data-a="mclose">Cancel</button><button class="btn danger" data-a="fl20delgo" data-id="${m.id}">Delete</button>`); }; }
+document.addEventListener('change', (e) => { const t = e.target, d = S.drawer; if (!d || d.type !== 'flog20') return;
+  if (t.id === 'fl20acc') { keep20(); d.r.acc = t.value; d.r.met = []; d.r.case = ''; d.r.fuCase = ''; if (d.err) delete d.err.acc; render(); } });
+document.addEventListener('input', (e) => { if (e.target.id !== 'fl20note') return; const n = e.target.value.length, c = document.getElementById('fl20cnt'); if (c) { c.textContent = `${n} / 500`; c.classList.toggle('over', n > 500); } });
+
+/* ---------- Activity cards (Activity page and account feeds) ---------- */
+actRow = function (x) { const a = accOf(x.acc) || { name: 'Unknown office', id: '' }, own = x.by === ME20(), cx = x.case && cById(x.case);
+  const meta = [`${x.pro ? 'Proactive' : 'Reactive'}.`, x.withFor ? `With or for: ${esc(x.withFor)}.` : '', x.met.length ? `Met with ${esc(x.met.join(', '))}.` : '', cx ? `Case <a href="#" data-a="fcase20" data-id="${x.case}">${GEHC(x.case)}</a>` : ''].filter(Boolean).join(' ');
+  return `<article class="fact a20 ${S.fnew20 === x.id ? 'new' : ''}"><div class="fa-h"><b>${esc(x.method)}: ${esc(x.inter)}</b> <span>with ${esc(a.name)}</span><span class="muted num">${d2_20(x.date)}</span></div>
+    <div class="a20m">${meta}${own ? '' : ` <span class="muted">Logged by ${esc(x.by || 'a colleague')}.</span>`}${x.updated ? ' <span class="muted">Edited.</span>' : ''}</div>
+    ${x.note && x.note !== 'No notes' ? `<p class="a20n" title="${esc(x.note)}">${esc(x.note)}</p>` : ''}
+    <div class="fa-t">${x.prods.map(p => `<span class="pill nodot t-info">${p}</span>`).join('')}${x.topics.map(t => `<span class="frtag">${esc(t)}</span>`).join('')}${x.outcome ? pill(x.outcome) : ''}</div>
+    ${own ? `<div class="a20a"><button class="btn sm" data-a="fl20edit" data-id="${x.id}">${ic('edit', 14)} Edit</button><button class="btn sm ghost danger-t" data-a="fl20del" data-id="${x.id}">Delete</button></div>` : ''}</article>`; };
+
+/* ---------- Activity page ---------- */
+function notContacted20() { const me = ME20(); return frmAccounts().filter(a => a.frm === me).map(a => ({ a, d: lastTouch(a) })).sort((p, q) => (p.d == null ? -1 : 0) - (q.d == null ? -1 : 0) || (q.d ?? 1e9) - (p.d ?? 1e9) || p.a.name.localeCompare(q.a.name)); }
+ROUTES_X['f-activity'] = () => { const F = S.af20 || (S.af20 = { method: '', inter: '', prod: '', acc: '' }), all = mine20();
+  const win = all.filter(x => -dayDiff(x.date) <= WIN20), pct = (n) => win.length ? Math.round(n * 100 / win.length) : 0;
+  const L = all.filter(x => (!F.method || x.method === F.method) && (!F.inter || x.inter === F.inter) && (!F.prod || x.prods.includes(F.prod)) && (!F.acc || x.acc === F.acc)).sort((p, q) => q.date - p.date || (q.created || 0) - (p.created || 0));
+  const kpi = (n, l, s) => `<div class="k20"><b class="num">${n}</b><span>${l}</span><em>${s}</em></div>`;
+  const head = `<div class="pagehead"><div><h1>Activity</h1><div class="muted" style="font-size:13px">Visits, calls and emails you logged, on any account or case</div></div><span style="flex:1"></span><button class="btn primary" data-a="drawer" data-v="flog">${ic('plus', 16)} Log activity</button></div>
+    <div class="k20row">${kpi(win.length, 'Activities logged', `Last ${WIN20} days`)}${kpi(pct(win.filter(x => x.pro).length) + '%', 'Proactive', `Share of the last ${WIN20} days`)}${kpi(pct(win.filter(x => x.method === 'Face-to-face').length) + '%', 'Face-to-face', `Share of the last ${WIN20} days`)}</div>`;
+  const sel = (k, all, opts) => `<label class="f20"><span class="sr">${all}</span><select data-af20="${k}" aria-label="${all}"><option value="">${all}</option>${opts.map(o => Array.isArray(o) ? `<option value="${esc(o[0])}" ${F[k] === o[0] ? 'selected' : ''}>${esc(o[1])}</option>` : `<option ${F[k] === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
+  const n = Object.values(F).filter(Boolean).length;
+  const filters = `<div class="f20row">${sel('method', 'All methods', FMETHODS)}${sel('inter', 'All interaction types', FINTER)}${sel('prod', 'All products', PRODS)}${sel('acc', 'All facilities or offices', locs20().map(a => [a.id, locLabel20(a)]))}${n ? '<button class="link-btn" data-a="af20clear">Clear filters</button>' : ''}<span style="flex:1"></span><span class="muted num" style="font-size:12.5px">${L.length} of ${all.length}</span></div>`;
+  const feed = `<section class="card"><div class="card-b">${filters}<div class="tl20">${L.map(actRow).join('') || `<div class="fempty sm">${ic('search', 24)}<b>No activity matches these filters.</b></div>`}</div></div></section>`;
+  const NC = notContacted20();
+  const side = `<aside class="card nc20" aria-label="Accounts not contacted recently"><div class="card-h"><h2>Accounts not contacted recently</h2></div><div class="card-b"><p class="muted" style="font-size:12px;margin:0 0 8px">Your territory. Never contacted first, then the longest since last contact. Over ${WIN20} days is flagged.</p>${NC.map(({ a, d }) => { const late = d == null || d > 30;
+    return `<div class="nc20i ${late ? 'late' : ''}">${late ? ic('alert', 15) : ic('clock', 15)}<div><b>${esc(a.name)}</b><span class="muted">${esc(a.type || 'Office')}</span></div><em>${d == null ? 'Never contacted' : `Last contact ${d} day${d === 1 ? '' : 's'} ago`}</em></div>`; }).join('')}</div></aside>`;
+  return `<div class="page">${head}<div class="act20">${feed}${side}</div></div>`; };
+document.addEventListener('change', (e) => { const k = e.target.dataset && e.target.dataset.af20; if (!k) return; S.af20 = S.af20 || {}; S.af20[k] = e.target.value; render(); });
+EXTRA.af20clear = () => { S.af20 = { method: '', inter: '', prod: '', acc: '' }; };
+
+/* ---------- Log activity on the case detail ---------- */
+{ const _cv = ROUTES_X['f-case']; ROUTES_X['f-case'] = () => { const h = _cv(), c = cById(S.fcaseId); if (!c) return h;
+  return h.replace('<div class="fch-acts">', `<div class="fch-acts"><button class="btn" data-a="flogcase20" data-id="${c.id}">${ic('edit', 16)} Log activity</button>`); }; }
+{ const _o = EXTRA.fopencase; EXTRA.fopencase = function (t, e) { S.fnew20 = null; return _o(t, e); }; }
+
 window.HP_START = () => render();
