@@ -3280,3 +3280,12 @@ html.hue-ge .logo-mark{display:none!important}html.hue-ge .sidenav.mini .logo-fu
 .fupl{flex-direction:row;flex-wrap:wrap;align-items:flex-end;gap:10px 14px}
 .fupl .fdz14{flex:1 1 340px;max-width:520px}
 .fupl > .errmsg,.fupl > .muted{flex-basis:100%}
+/* GE: light grades of Compassion Purple for header rows, table headers and alternate rows (Sarah) */
+html.hue-ge body:not(.theme-dark){--zebra:#f8f4fc;--hover:#f1e8fb;--line-2:#e6dcf2}
+html.hue-ge body:not(.theme-dark) .block .section-t, html.hue-ge body:not(.theme-dark) .kgroup h5, html.hue-ge body:not(.theme-dark) .rvh{background:#efe6fa;border-color:#e2d4f3;color:#4a1a82}
+html.hue-ge body:not(.theme-dark) .block .section-t svg, html.hue-ge body:not(.theme-dark) .kgroup h5 svg{color:#6022a6}
+html.hue-ge body:not(.theme-dark) .dt th, html.hue-ge body:not(.theme-dark) .worklist .wi-h{background:#efe6fa;color:#4a1a82;border-bottom-color:#e2d4f3}
+html.hue-ge body:not(.theme-dark) .dt tbody tr:nth-child(even) td{background:#f8f4fc}
+html.hue-ge body:not(.theme-dark) .dt tbody tr:hover td{background:#f1e8fb}
+html.hue-ge body:not(.theme-dark) .theme-green .dock:not(.right) .kgroup h5, html.hue-ge body.theme-green:not(.theme-dark) .dock:not(.right) .section-t, html.hue-ge body.theme-green:not(.theme-dark) .dock:not(.right) .kgroup h5{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);color:#dcc8f3}
+html.hue-ge body.theme-green:not(.theme-dark) .dock:not(.right) .section-t svg, html.hue-ge body.theme-green:not(.theme-dark) .dock:not(.right) .kgroup h5 svg{color:#b780f5}
