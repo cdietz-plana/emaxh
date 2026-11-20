@@ -7017,4 +7017,124 @@ ROUTES_X['f-followups'] = () => { const A = new Set(myAccts().map(a => a.id)), L
 { const _cv = ROUTES_X['f-case']; ROUTES_X['f-case'] = () => { const h = _cv(), c = cById(S.fcaseId); if (!c) return h;
   return h.replace('<div class="fch-acts">', `<div class="fch-acts"><button class="btn" data-a="flogcase20" data-id="${c.id}">${ic('edit', 16)} Log activity</button>`); }; }
 { const _o = EXTRA.fopencase; EXTRA.fopencase = function (t, e) { S.fnew20 = null; return _o(t, e); }; }
+/* ================= FRM V21: Follow-ups worklist, new follow-up, edit and delete follow-ups ================= */
+FRM_VERSIONS.unshift(['f10', 'V21', 'Review round 20', 'Follow-ups worklist with Open and Completed tabs and counts, due-date sections (Overdue, Due today, Due this week, Due later), filters for owner, priority, type and facility or office in the same panel as My cases, and one-click complete or reopen. Each card shows the task, the office and its type, the due date with a relative label, priority, type, owner, the linked case (opens a case preview), notes and the office review flag. New follow-up opens a one-page side panel with any office in any territory, the office\'s open cases, owner (Me, FRMs, case managers) and a 500-character note. Follow-ups assigned to you can be edited or deleted; reassigning moves those rights to the new owner. The overdue badge in the top bar counts the follow-ups you created or own.']);
+
+/* ---------- Data: creator, owner, case, notes, audit ---------- */
+const CM21 = () => TEAM.slice();
+const ownerRole21 = (n) => n === ME20() ? 'Me' : TEAM.includes(n) ? 'Case manager' : 'FRM';
+const ownerTx21 = (n) => n === ME20() ? 'Me' : `${n} (${ownerRole21(n) === 'Case manager' ? 'Case manager' : 'FRM'})`;
+const visible21 = () => { const me = ME20(); return FFU.filter(f => f.by === me || f.owner === me); };
+const mine21 = (f) => f.owner === ME20();
+const over21 = () => visible21().filter(f => !f.done && dayDiff(f.due) < 0).length;
+(function seed21() { try { seedFRM(); } catch (e) { return; }
+  const me = ME20(), others = FRM10.filter(f => f.name !== me).map(f => f.name);
+  const ctx = ['Practice manager asked for the updated coding sheet before their billing meeting.', 'Revenue cycle lead wants to compare the per-mCi rate with their current contract. Bring last quarter\'s remits.', '', 'Front desk is new. Walk them through the referral form and where to fax it.', ''];
+  FFU.forEach((f, i) => { if (!f.by) f.by = me; if (!f.owner) f.owner = me; if (!f.created) f.created = addDays(f.due, -9); if (f.note === undefined) f.note = ctx[i % ctx.length]; if (f.case === undefined) { const o = caseOpts20(accOf(f.acc)); f.case = i % 3 === 1 && o.length ? o[0].c.id : ''; } f.updated = f.updated || null; f.doneAt = f.done ? (f.doneAt || addDays(TODAY, -1)) : null; });
+  const L = locs20(), A = myAccts(), far = L.find(a => !A.some(b => b.id === a.id)) || L[0], add = (o) => FFU.push(Object.assign({ id: 'FUX' + FFU.length, done: false, review: true, note: '', case: '', updated: null, doneAt: null, pri: 'Normal' }, o));
+  if (A[0]) add({ acc: A[0].id, text: 'Send the signed LMN to the Hub for the pending appeal', type: 'Escalate to HUB', due: addDays(TODAY, -3), pri: 'High', by: me, owner: TEAM[0], created: addDays(TODAY, -8), note: 'Hub needs the letter before the payer deadline. Janet is chasing the prescriber signature.' });
+  if (far) add({ acc: far.id, text: 'Cover the in-service while I am at the regional meeting', type: 'Schedule in-service', due: addDays(TODAY, 5), by: others[0] || me, owner: me, created: addDays(TODAY, -2), note: 'Office asked for a short session for two new schedulers.' });
+  if (A[1]) add({ acc: A[1].id, text: 'Ask the office to update their payer mix for the review', type: 'Call', due: addDays(TODAY, 12), pri: 'Low', by: me, owner: others[1] || me, created: addDays(TODAY, -1), review: false });
+  if (A[2]) add({ acc: A[2].id, text: 'Drop off the coverage summary for Medicare Advantage plans', type: 'Visit', due: addDays(TODAY, -6), by: me, owner: me, created: addDays(TODAY, -15), done: true, doneAt: addDays(TODAY, -4), note: 'Left two copies with the front desk.' });
+  if (A[3]) add({ acc: A[3].id, text: 'Email the appeal letter template to the PA specialist', type: 'Email', due: addDays(TODAY, -10), by: me, owner: me, created: addDays(TODAY, -20), done: true, doneAt: addDays(TODAY, -9) });
+})();
+/* Inline follow-ups from Log activity carry the creator too */
+{ const _s = EXTRA.fl20save; EXTRA.fl20save = function (t) { const n = FFU.length, r = _s.call(this, t); FFU.slice(n).forEach(f => { f.by = f.by || ME20(); f.created = f.created || new Date(); f.updated = null; f.doneAt = null; }); return r; }; }
+EXTRA.ffudone = (t) => { const f = FFU.find(x => x.id === t.dataset.id); if (!f) return; f.done = !f.done; f.doneAt = f.done ? new Date(TODAY) : null; toast(f.done ? 'Follow-up completed' : 'Follow-up reopened'); };
+
+/* ---------- Overdue badge: follow-ups you created or own ---------- */
+{ const _f = frmShell; frmShell = function (c) { const h = _f(c), n = over21();
+  return h.replace(/(data-r="f-followups"[^>]*>Follow-ups)(?: <span class="count num">\d+<\/span>)?/, `$1${n ? ` <span class="count num" aria-label="${n} overdue">${n}</span>` : ''}`); }; }
+
+/* ---------- Follow-up drawer: new and edit, one page ---------- */
+function newFu21(o = {}) { return { type: 'ffu21', id: 'new', edit: null, err: {}, r: { acc: o.acc || '', text: '', type: '', due: '', pri: 'Normal', owner: ME20(), case: o.case || '', review: true, note: '' } }; }
+function editFu21(f) { return { type: 'ffu21', id: f.id, edit: f.id, err: {}, r: { acc: f.acc, text: f.text, type: f.type, due: isoOf(fmt(f.due)), pri: f.pri || 'Normal', owner: f.owner, case: f.case || '', review: !!f.review, note: f.note || '' } }; }
+const keep21 = () => { const d = S.drawer; if (!d || d.type !== 'ffu21') return; const R = d.r, g = (id) => { const el = document.getElementById(id); return el ? el.value : undefined; };
+  [['fu21acc', 'acc'], ['fu21text', 'text'], ['fu21type', 'type'], ['fu21due', 'due'], ['fu21pri', 'pri'], ['fu21own', 'owner'], ['fu21case', 'case'], ['fu21note', 'note']].forEach(([id, k]) => { const v = g(id); if (v !== undefined) R[k] = v; });
+  const rv = document.getElementById('fu21rev'); if (rv) R.review = rv.checked; };
+function check21(R) { const e = {}, req = 'This field is required';
+  if (!R.acc) e.acc = 'Select a facility or office'; if (!R.text.trim()) e.text = 'Enter what needs to happen'; else if (R.text.length > 500) e.text = `Up to 500 characters (${R.text.length} now)`;
+  if (!R.type) e.type = 'Select a type'; if (!R.due) e.due = 'Pick a due date'; else if (R.due < todayIso20()) e.due = 'Choose today or a later date';
+  if (!R.pri) e.pri = req; if (!R.owner) e.owner = req; if (R.note.length > 500) e.note = `Notes can be up to 500 characters (${R.note.length} now)`; return e; }
+{ const _d = drawer; drawer = function () { let d = S.drawer;
+  if (d && d.type === 'ffu' && isFRM()) S.drawer = d = newFu21({ acc: d.id || '' });
+  if (!d || d.type !== 'ffu21') return _d();
+  const R = d.r, e = d.err || {}, ed = !!d.edit, a = R.acc ? accOf(R.acc) : null, C = caseOpts20(a), enter = LAST_DRAWER !== d.type + (d.id || '') && !LAST_DRAWER;
+  const sel = (id, label, opts, v, o = {}) => `<div class="input ${o.err ? 'err' : ''}"><label class="lbl" for="${id}">${label}${o.opt ? ' <span class="optl">Optional</span>' : ' <span class="req">*</span>'}</label><select id="${id}">${o.ph ? `<option value="">${o.ph}</option>` : ''}${opts.map(x => { const [val, l] = Array.isArray(x) ? x : [x, x]; return `<option value="${esc(val)}" ${v === val ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>${o.help ? `<span class="help">${o.help}</span>` : ''}${o.err ? errField(o.err) : ''}</div>`;
+  const own = `<div class="input ${e.owner ? 'err' : ''}"><label class="lbl" for="fu21own">Owner <span class="req">*</span></label><select id="fu21own"><option value="${esc(ME20())}" ${R.owner === ME20() ? 'selected' : ''}>Me (${esc(ME20())})</option><optgroup label="FRMs">${FRM10.filter(f => f.name !== ME20()).map(f => `<option ${R.owner === f.name ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</optgroup><optgroup label="Case managers">${CM21().map(t => `<option ${R.owner === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</optgroup></select>${ed && R.owner !== ME20() ? '<span class="help">After you save, only the new owner can edit or delete it.</span>' : ''}${e.owner ? errField(e.owner) : ''}</div>`;
+  const caseList = C.map(x => [x.c.id, caseLabel20(x)]).concat(R.case && !C.some(x => x.c.id === R.case) && cById(R.case) ? [[R.case, caseLabel20(fx13(cById(R.case)))]] : []);
+  const body = `${sel('fu21acc', 'Facility or office', locs20().map(o => [o.id, locLabel20(o)]), R.acc, { ph: 'Select a facility or office', err: e.acc, help: 'Any office or facility, in any territory.' })}
+    <div class="input ${e.text ? 'err' : ''}"><label class="lbl" for="fu21text">What needs to happen <span class="req">*</span></label><input id="fu21text" maxlength="500" value="${esc(R.text)}" placeholder="For example, confirm the EMR coding build is complete">${e.text ? errField(e.text) : ''}</div>
+    <div class="imrow" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">${sel('fu21type', 'Type', FUTYPE20, R.type, { ph: 'Select a type', err: e.type })}
+      <div class="input ${e.due ? 'err' : ''}"><label class="lbl" for="fu21due">Due date <span class="req">*</span></label><input type="date" id="fu21due" value="${esc(R.due)}" min="${todayIso20()}"><span class="help">Today or later</span>${e.due ? errField(e.due) : ''}</div></div>
+    <div class="imrow" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">${sel('fu21pri', 'Priority', ['Normal', 'High', 'Low'], R.pri, { err: e.pri })}${own}</div>
+    ${sel('fu21case', 'Related case', [['', 'None'], ...caseList], R.case, { opt: 1, help: a ? 'Open cases for this office.' : 'Select a facility or office to see its open cases.' })}
+    <label class="opt fu21rev"><input type="checkbox" id="fu21rev" ${R.review ? 'checked' : ''}><span>Show on the office review as a next step</span></label>
+    <div class="input ${e.note ? 'err' : ''}"><label class="lbl" for="fu21note">Context for future you <span class="optl">Optional</span></label><textarea id="fu21note" maxlength="600" style="height:96px" placeholder="Background, who to ask for, what was promised">${esc(R.note)}</textarea><span class="cnt20 ${R.note.length > 500 ? 'over' : ''}" id="fu21cnt">${R.note.length} / 500</span>${e.note ? errField(e.note) : ''}</div>`;
+  const title = ed ? 'Edit follow-up' : 'New follow-up';
+  return `<div class="drawer-scrim ${enter ? 'enter' : ''}" data-a="drawerclose"></div><aside class="drawer ${enter ? 'enter' : ''}" role="dialog" aria-label="${title}"><div class="drawer-h"><h2>${title}</h2><button class="iconbtn" data-a="drawerclose" aria-label="Close">${ic('x', 18)}</button></div><div class="drawer-b">${body}</div>
+    <div class="drawer-f"><button class="btn" data-a="drawerclose">Cancel</button><span style="flex:1"></span><button class="btn primary" data-a="fu21save">${ed ? 'Save changes' : 'Save follow-up'}</button></div></aside>`; }; }
+document.addEventListener('change', (e) => { const d = S.drawer; if (!d || d.type !== 'ffu21' || e.target.id !== 'fu21acc') return; keep21(); d.r.acc = e.target.value; d.r.case = ''; if (d.err) delete d.err.acc; render(); });
+document.addEventListener('input', (e) => { if (e.target.id !== 'fu21note') return; const n = e.target.value.length, c = document.getElementById('fu21cnt'); if (c) { c.textContent = `${n} / 500`; c.classList.toggle('over', n > 500); } });
+Object.assign(EXTRA, {
+  fu21new() { S.drawer = newFu21({}); },
+  fu21edit(t) { const f = FFU.find(x => x.id === t.dataset.id); if (!f || !mine21(f)) return; S.drawer = editFu21(f); },
+  fu21save() { keep21(); const d = S.drawer, R = d.r, ed = !!d.edit, e = check21(R);
+    if (Object.keys(e).length) { d.err = e; setTimeout(() => { const n = document.querySelector('.drawer .input.err'); if (n) n.scrollIntoView({ block: 'center' }); }, 0); return; }
+    const rec = { acc: R.acc, text: R.text.trim(), type: R.type, due: new Date(R.due + 'T00:00:00'), pri: R.pri, owner: R.owner, case: R.case, review: R.review, note: R.note.trim() };
+    if (ed) { const f = FFU.find(x => x.id === d.edit); if (!f || !mine21(f)) { S.drawer = null; toast('You can only edit follow-ups assigned to you'); return; }
+      const moved = f.owner !== rec.owner; Object.assign(f, rec, { updated: new Date() }); S.drawer = null; S.fnew21 = f.id; toast(moved ? `Follow-up reassigned to ${rec.owner}` : 'Follow-up updated'); return; }
+    const id = 'FU' + Date.now(); FFU.push(Object.assign({ id, done: false, doneAt: null, by: ME20(), created: new Date(), updated: null }, rec)); S.drawer = null; S.fnew21 = id; S.fu21tab = 'open';
+    toast(rec.owner === ME20() ? 'Follow-up saved' : `Follow-up saved and assigned to ${rec.owner}`); },
+  fu21del(t) { const f = FFU.find(x => x.id === t.dataset.id); if (!f || !mine21(f)) return; S.modal = { type: 'fdel21', id: f.id }; },
+  fu21delgo(t) { const i = FFU.findIndex(x => x.id === t.dataset.id); if (i < 0 || !mine21(FFU[i])) { S.modal = null; return; } FFU.splice(i, 1); S.modal = null; toast('Follow-up deleted'); },
+  fu21tab(t) { S.fu21tab = t.dataset.v; },
+  fu21clear() { S.ff21 = { owner: '', pri: '', type: '', acc: '' }; },
+  fu21chip(t) { S.ff21[t.dataset.k] = ''; }
+});
+{ const _x = extraModal; extraModal = function (m, wrap) { if (!m || m.type !== 'fdel21') return _x(m, wrap); const f = FFU.find(x => x.id === m.id), a = f ? accOf(f.acc) : null;
+  return wrap('Delete this follow-up?', `<p style="margin:0">Are you sure you want to delete this follow-up? This action cannot be undone.</p>${f ? `<div class="del20"><b>${esc(f.text)}</b><br><span class="muted">${esc(a ? a.name : '')} · due ${d2_20(f.due)}</span></div>` : ''}${f && f.act ? '<p class="muted" style="margin:8px 0 0;font-size:13px">The activity it was logged with stays on your Activity page.</p>' : ''}`,
+    `<button class="btn" data-a="mclose">Cancel</button><button class="btn danger" data-a="fu21delgo" data-id="${m.id}">Delete</button>`); }; }
+
+/* ---------- Follow-ups page ---------- */
+const rel21 = (f) => { const d = dayDiff(f.due); return d < 0 ? `${-d} day${d === -1 ? '' : 's'} overdue` : d === 0 ? 'Due today' : `Due in ${d} day${d === 1 ? '' : 's'}`; };
+function fuCard21(f) { const a = accOf(f.acc) || { name: 'Unknown office', type: '' }, d = dayDiff(f.due), late = !f.done && d < 0, own = mine21(f), cx = f.case && cById(f.case);
+  return `<article class="fu21 ${f.done ? 'done' : ''} ${late ? 'late' : ''} ${S.fnew21 === f.id ? 'new' : ''}">
+    <button class="fucheck" data-a="ffudone" data-id="${f.id}" role="checkbox" aria-checked="${f.done}" aria-label="${f.done ? 'Reopen' : 'Mark complete'}: ${esc(f.text)}">${f.done ? ic('check', 14) : ''}</button>
+    <div class="fu21b"><b class="fu21t">${esc(f.text)}</b>
+      <div class="fu21o">${esc(a.name)}${a.type ? ` <span class="muted">· ${esc(a.type)}</span>` : ''}</div>
+      <div class="fu21tags">${f.pri === 'High' ? '<span class="pill nodot t-danger">High</span>' : `<span class="pill nodot t-neutral">${esc(f.pri || 'Normal')}</span>`}<span class="frtag">${esc(f.type)}</span><span class="fu21own">${ic('users', 13)} ${esc(ownerTx21(f.owner))}</span>${cx ? `<a href="#" class="fu21case" data-a="fcase20" data-id="${f.case}">${ic('file', 13)} ${GEHC(f.case)}</a>` : ''}${f.review ? `<span class="fu21rv" title="Shows on the office review as a next step">${ic('star', 12)} Office review</span>` : ''}</div>
+      ${f.note ? `<p class="fu21n" title="${esc(f.note)}">${esc(f.note)}</p>` : ''}
+      ${!own ? `<div class="fu21by muted">${f.by === ME20() ? `You assigned this to ${esc(f.owner)}.` : `Assigned to you by ${esc(f.by)}.`}${f.updated ? ' Edited.' : ''}</div>` : f.by !== ME20() ? `<div class="fu21by muted">Assigned to you by ${esc(f.by)}.${f.updated ? ' Edited.' : ''}</div>` : f.updated ? '<div class="fu21by muted">Edited.</div>' : ''}
+    </div>
+    <div class="fu21r"><span class="num fu21d">${d2_20(f.due)}</span><span class="fu21rel ${late ? 'late' : !f.done && d === 0 ? 'today' : ''}">${f.done ? `Completed ${f.doneAt ? d2_20(f.doneAt) : ''}` : rel21(f)}</span>
+      ${own ? `<div class="fu21a"><button class="btn sm" data-a="fu21edit" data-id="${f.id}" aria-label="Edit follow-up">${ic('edit', 14)} Edit</button><button class="btn sm ghost danger-t" data-a="fu21del" data-id="${f.id}">Delete</button></div>` : ''}</div></article>`; }
+const FG21 = () => [['owner', 'Owner', 'All owners', [[ME20(), 'Me'], ...FRM10.filter(f => f.name !== ME20()).map(f => [f.name, f.name + ' (FRM)']), ...CM21().map(t => [t, t + ' (Case manager)'])]], ['pri', 'Priority', 'All priorities', ['High', 'Normal', 'Low']], ['type', 'Type', 'All types', FUTYPE20], ['acc', 'Facility or office', 'All facilities or offices', locs20().map(a => [a.id, locLabel20(a)])]];
+ROUTES_X['f-followups'] = () => { const F = S.ff21 || (S.ff21 = { owner: '', pri: '', type: '', acc: '' }), tab = S.fu21tab || 'open', V = visible21();
+  const M = V.filter(f => (!F.owner || f.owner === F.owner) && (!F.pri || (f.pri || 'Normal') === F.pri) && (!F.type || f.type === F.type) && (!F.acc || f.acc === F.acc));
+  const open = M.filter(f => !f.done).sort((p, q) => p.due - q.due || (p.pri === 'High' ? -1 : 0) - (q.pri === 'High' ? -1 : 0)), done = M.filter(f => f.done).sort((p, q) => (q.doneAt || 0) - (p.doneAt || 0));
+  const nOpen = V.filter(f => !f.done).length, nDone = V.filter(f => f.done).length, G = FG21(), n = G.filter(([k]) => F[k]).length;
+  const head = `<div class="pagehead"><div><h1>Follow-ups</h1><div class="muted" style="font-size:13px">Follow-ups you created or that are assigned to you, on any office or case</div></div><span style="flex:1"></span>
+    <div class="seg lite fu21seg" role="tablist">${[['open', `Open (${nOpen})`], ['done', `Completed (${nDone})`]].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" aria-pressed="${tab === k}" data-a="fu21tab" data-v="${k}">${l}</button>`).join('')}</div>
+    <button class="btn primary" data-a="fu21new">${ic('plus', 16)} New follow-up</button></div>`;
+  const selF = ([k, label, any, opts]) => `<label class="ff"><span>${label}</span><select data-ff21="${k}"><option value="">${any}</option>${opts.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${F[k] === v ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select></label>`;
+  const dock = `<aside class="dock ${S.fdockL ? '' : 'closed'}" aria-label="Filters"><div class="dock-head">${ic('filter', 16)}<h3>Filters ${n ? `<span class="pill nodot t-ok num" style="height:20px">${n}</span>` : ''}</h3>${n ? `<button class="link-btn x" data-a="fu21clear">Clear</button>` : ''}<button class="iconbtn" data-a="fdockL" aria-label="${S.fdockL ? 'Collapse' : 'Expand'} filters">${ic(S.fdockL ? 'chevl' : 'chevr', 16)}</button><span class="vlabel">Filters${n ? ` (${n})` : ''}</span></div>
+    <div class="dock-body"><div class="fgroup ff13"><div class="ffh">Follow-up filters</div>${G.map(selF).join('')}</div></div></aside>`;
+  const chips = G.filter(([k]) => F[k]).map(([k, l, , opts]) => { const o = opts.find(z => (Array.isArray(z) ? z[0] : z) === F[k]); return `<span class="chip"><span style="opacity:.7">${l}:</span> ${esc(Array.isArray(o) ? o[1] : F[k])}<button data-a="fu21chip" data-k="${k}" aria-label="Remove">${ic('x', 12)}</button></span>`; });
+  const L = tab === 'open' ? open : done, page = pgSlice20('fu21' + tab, L, JSON.stringify(F) + L.length, 10), P = new Set(page.map(f => f.id));
+  const sec = (t, Z, cls) => { const z = Z.filter(f => P.has(f.id)); return z.length ? `<section class="card fu21sec ${cls || ''}"><div class="card-h"><h2>${cls === 'late' ? ic('alert', 16) + ' ' : ''}${t} <span class="count">${Z.length}</span></h2></div><div class="card-b">${z.map(fuCard21).join('')}</div></section>` : ''; };
+  const empty = (msg, sub) => `<section class="card"><div class="fempty sm">${ic(n ? 'search' : 'check', 26)}<b>${msg}</b>${sub ? `<span>${sub}</span>` : ''}${n ? '<button class="btn primary" data-a="fu21clear">Clear filters</button>' : ''}</div></section>`;
+  let body;
+  if (!L.length) body = n ? empty('No follow-ups match these filters.', 'Try another owner, type or office, or clear the filters.') : tab === 'open' ? empty('No open follow-ups.', 'Everything is done. Use New follow-up to schedule the next step.') : empty('No completed follow-ups yet.');
+  else if (tab === 'open') { const d = (f) => dayDiff(f.due);
+    body = sec('Overdue', open.filter(f => d(f) < 0), 'late') + sec('Due today', open.filter(f => d(f) === 0)) + sec('Due this week', open.filter(f => d(f) > 0 && d(f) <= 7)) + sec('Due later', open.filter(f => d(f) > 7)); }
+  else body = sec('Completed', done);
+  const pager = L.length ? `<section class="card pgcard20">${pager20('fu21' + tab, L.length, 'follow-up', 'follow-ups')}</section>` : '';
+  return fWork(dock, head + (chips.length ? `<div class="chips" style="margin-bottom:12px">${chips.join('')}<button class="link-btn" data-a="fu21clear">Clear all</button></div>` : '') + body + pager, ''); };
+document.addEventListener('change', (e) => { const k = e.target.dataset && e.target.dataset.ff21; if (!k) return; S.ff21 = S.ff21 || {}; S.ff21[k] = e.target.value; render(); });
+{ const _g = EXTRA.go; if (_g) EXTRA.go = function (t, e) { if (t && t.dataset && t.dataset.r === 'f-followups') S.fnew21 = null; return _g.call(this, t, e); }; }
+
+/* Standalone New follow-up lives only in the Follow-ups header (story); other entry points use Log activity */
+{ const _t = ROUTES_X['f-today']; ROUTES_X['f-today'] = () => _t().replace(/<button class="btn[^"]*" data-a="drawer" data-v="ffu"[^>]*>[\s\S]*?<\/button>/g, ''); }
+{ const _a = ROUTES_X['f-account']; ROUTES_X['f-account'] = () => _a().replace(/<button class="btn[^"]*" data-a="drawer" data-v="ffu"[^>]*>[\s\S]*?<\/button>/g, ''); }
 window.HP_START = () => render();
